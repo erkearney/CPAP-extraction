@@ -18,7 +18,7 @@ coverage.xml
 .pytest_cache/
 
 # Sphinx documentation
-docs/_build/
+docs/build/
 
 # Environments
 .env
