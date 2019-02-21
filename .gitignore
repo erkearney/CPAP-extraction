@@ -33,3 +33,6 @@ venv.sh
 # CPAP data files
 *.000
 *.000_extracted
+
+# Ignore burndown file
+*.ods
