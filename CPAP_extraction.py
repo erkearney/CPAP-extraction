@@ -4,12 +4,14 @@ from pathlib import Path    # For validating file paths
 
 import decorators           # For debugging, see the decorators.py file
 
+
 def hello_world():
     print("Hello world!")
     return 0
 
+
 # This function is for testing only, it will be deleted
-def copy_file(source, destination): 
+def copy_file(source, destination):
     source = Path(source[0])
     if not source.is_file():
         print("ERROR: source file {} not found!".format(source))
@@ -22,7 +24,6 @@ def copy_file(source, destination):
 
     outfile = '{}/{}_extracted'.format(destination, source)
 
-
     with open(source, 'rb') as input:
         with open(outfile, 'wb') as output:
             for line in input:
@@ -32,6 +33,7 @@ def copy_file(source, destination):
         print('Done, the original file is size {}, '
               'The extracted file is size {}'
               .format(os.path.getsize(source), os.path.getsize(outfile)))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='CPAP_data_extraction')
