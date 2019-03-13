@@ -19,7 +19,7 @@ destination : path
 verbose : bool
 '''
 import argparse             # For command line arguments
-import sys
+import sys                  # Fir command line arguments
 import os                   # For file IO
 import decorators           # For debugging, see the decorators.py file
 
