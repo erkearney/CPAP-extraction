@@ -89,34 +89,101 @@ def copy_file(source, destination):
 
     Attributes
     ----------
-    outfile : string
-        The name of the output file, for a file called 'orginal.000', the
-        crated file will be called 'original.000_extracted'
-
     verbose : bool
-        if True, print the size of the original and copied file, since this
-        function only copies, these two sizes should be the same
+        if True, print the size of the original and copied file.
+
+    Notes
+    -----
+    Verbose will only work if the extracted file is put into the same
+    directory as the source file, I'm not going to bother fixing this since
+    this code will be deleted anyway
     '''
-    if not os.path.isfile(source):
-        print("ERROR: source file {} not found!".format(source))
-        exit()
 
-    if not os.path.isdir(destination):
-        print("ERROR: destination directory {} not found!".format(destination))
-        exit()
-
-    outfile = '{}/{}_extracted'.format(destination, source)
-
-    with open(source, 'rb') as input:
-        with open(outfile, 'wb') as output:
-            for line in input:
-                output.write(line)
+    File = read_file(source)
+    write_file(File, destination)
 
     if verbose:
-        print('Done, the original file is size {}, '
-              'The extracted file is size {}'
-              .format(os.path.getsize(source), os.path.getsize(outfile)))
+        try:
+            print('Done, the original file is size {}, '
+                  'The extracted file is size {}'
+                  .format(os.path.getsize(source), 
+                      os.path.getsize(source.split('.')[0] + '_extracted.JSON')))
+        except FileNotFoundError:
+            print('Couldn\'t find the extracted file, did you place it in '
+                  'the same directory as the source file?')
 
+def read_file(source):
+    '''
+    Reads a source from the users' drive and returns the source as File
+
+    Parameters
+    ----------
+    source : Path
+        The file to be read
+
+    Attributes
+    ---------
+    file : File
+        The read-in file, now stored in memory
+    
+    verbose : bool
+        if True, print 'Now reading in {source}'
+    '''
+
+    if verbose:
+        print('Now reading in {}'.format(source))
+
+    if not os.path.isfile(source):
+        raise FileNotFoundError(
+                'ERROR: source file {} not found!'.format(source))
+        exit()
+
+    File = open(source, 'rb')
+    return File
+
+def write_file(File, destination):
+    '''
+    Writes File out to the users' drive, in directory destination
+
+    Parameters
+    ----------
+    File : file
+        The file to be written out
+
+    destination : Path
+        The directory to place the written out file
+
+    Attributes
+    ----------
+    source : String
+        The name of the original file
+
+    output_name : String
+        The name of the output file
+
+    verbose : bool
+        if True, print 'Now writing out source.JSON', where 'source' is the 
+        name of the orginal file.
+    '''
+
+    global source
+    # Get everything from the source's filename before the file extention, and 
+    # append '_extracted.JSON'
+    output_name = source.split('.')[0] + '_extracted.JSON'
+
+    if verbose:
+        print('Now writting {} to {}'.format(output_name, destination))
+
+    if not os.path.isdir(destination):
+        raise FileNotFoundError(
+            'ERROR: destination directory {} not found!'.format(destination))
+        exit()
+
+    print(destination + '/' + output_name)
+    with open(destination + '/' + output_name, 'w') as output:
+        for line in File:
+            output.write(str(line))
+        
 
 # Global variables
 source = "."
