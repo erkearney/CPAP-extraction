@@ -106,11 +106,13 @@ def copy_file(source, destination):
         try:
             print('Done, the original file is size {}, '
                   'The extracted file is size {}'
-                  .format(os.path.getsize(source), 
-                      os.path.getsize(source.split('.')[0] + '_extracted.JSON')))
+                  .format(os.path.getsize(source),
+                          os.path.getsize(source.split('.')[0] +
+                                          '_extracted.JSON')))
         except FileNotFoundError:
             print('Couldn\'t find the extracted file, did you place it in '
                   'the same directory as the source file?')
+
 
 def read_file(source):
     '''
@@ -125,7 +127,7 @@ def read_file(source):
     ---------
     file : File
         The read-in file, now stored in memory
-    
+
     verbose : bool
         if True, print 'Now reading in {source}'
     '''
@@ -139,6 +141,7 @@ def read_file(source):
 
     File = open(source, 'rb')
     return File
+
 
 def write_file(File, destination):
     '''
@@ -161,12 +164,12 @@ def write_file(File, destination):
         The name of the output file
 
     verbose : bool
-        if True, print 'Now writing out source.JSON', where 'source' is the 
+        if True, print 'Now writing out source.JSON', where 'source' is the
         name of the orginal file.
     '''
 
     global source
-    # Get everything from the source's filename before the file extention, and 
+    # Get everything from the source's filename before the file extention, and
     # append '_extracted.JSON'
     output_name = source.split('.')[0] + '_extracted.JSON'
 
@@ -180,7 +183,7 @@ def write_file(File, destination):
     with open(destination + '/' + output_name, 'w') as output:
         for line in File:
             output.write(str(line))
-        
+
 
 # Global variables
 source = "."
