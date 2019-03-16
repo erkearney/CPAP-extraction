@@ -136,7 +136,6 @@ def read_file(source):
     if not os.path.isfile(source):
         raise FileNotFoundError(
                 'ERROR: source file {} not found!'.format(source))
-        exit()
 
     File = open(source, 'rb')
     return File
@@ -177,9 +176,7 @@ def write_file(File, destination):
     if not os.path.isdir(destination):
         raise FileNotFoundError(
             'ERROR: destination directory {} not found!'.format(destination))
-        exit()
 
-    print(destination + '/' + output_name)
     with open(destination + '/' + output_name, 'w') as output:
         for line in File:
             output.write(str(line))
