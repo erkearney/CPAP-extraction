@@ -16,10 +16,11 @@ Indices and tables
    :maxdepth: 2
    :caption: Contents:
 
-.. automodule:: CPAP_extraction
+.. automodule:: cpap_extraction
     :members:
 
 .. automodule:: decorators
     :members:
 
-
+.. automodule:: test_cpap_extraction
+    :members:
