@@ -6,7 +6,8 @@ Example
 -------
     $ python cpap_extraction.py 38611.000 .
 
-Extracts the raw CPAP data from 38611.000 to a new file called 38611.json
+Extracts the raw CPAP data from 38611.000 to a new file called 
+38611_extracted.JSON
 
 Attributes
 ----------
