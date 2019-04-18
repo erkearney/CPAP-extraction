@@ -22,6 +22,8 @@ verbose : bool
 import argparse             # For command line arguments
 import sys                  # Fir command line arguments
 import os                   # For file IO
+import struct               # For unpacking binary data
+import binascii             # For unpacking binary data
 import decorators           # For debugging, see the decorators.py file
 
 
@@ -100,7 +102,7 @@ def copy_file(source, destination):
     this code will be deleted anyway
     '''
 
-    File = read_file(source)
+    File = open_file(source)
     write_file(File, destination)
 
     if verbose:
@@ -115,7 +117,7 @@ def copy_file(source, destination):
                   'the same directory as the source file?')
 
 
-def read_file(source):
+def open_file(source):
     '''
     Reads a source from the users' drive and returns the source as File
 
@@ -125,16 +127,20 @@ def read_file(source):
         The file to be read
 
     Attributes
-    ---------
+    ----------
     file : File
         The read-in file, now stored in memory
 
     verbose : bool
-        if True, print 'Now reading in {source}'
+        if True, print 'Reading in {source}'
+
+    Returns
+    -------
+    File : The read-in file
     '''
 
     if verbose:
-        print('Now reading in {}'.format(source))
+        print('Reading in {}'.format(source))
 
     if not os.path.isfile(source):
         raise FileNotFoundError(
@@ -142,6 +148,119 @@ def read_file(source):
 
     File = open(source, 'rb')
     return File
+
+
+def extract_header(data_file):
+    '''
+    The SpO2 files, stored as .001 files, all have header packets. This method
+    extracts the data from those headers, and returns those data
+
+    Parameters
+    ----------
+    data_file : File
+        The .001 file that contains the header to be read
+
+    Attributes
+    ----------
+
+    verbose : bool
+        if True, print 'Now reading the header packet in {source}'
+
+    header : String array
+        A String array to be populated with the following fields, all of which
+        are part of the header packet
+
+        magic_number : unsigned 32-bit int
+            TODO: What?
+
+        file_version : unsigned 16-bit int
+            TODO: What?
+
+        file_type_data : unisgned 16-bit int
+            TODO: What?
+
+        machine_ID : unsigned 32-bit int
+            This machine's ID number
+
+        session_ID : unsigned 32-bit int
+            This session's ID number
+
+        start_time : 64-bit int
+            The start time of this session, stored in UNIX date-time format
+
+        end_time : 64-bit int
+            The end time of this session, stored in UNIX date-time format
+
+        compressed : unsigned 16-bit int
+            TODO: What?
+
+        machine_type : unsigned 16-bit in
+            2 indicates pulse oximeter
+            TODO: What are the other types?
+
+        data_size : unsigned 32-bit integer
+            Indicates the size of the data packets, which follow the header
+
+        crc : unsigned 16-bit integer
+            TODO: What?
+
+        mcsize : unsigned 16-bit integer
+            Indicates the number of data streams
+            TODO: What?
+
+    Returns
+    -------
+    header : String array
+        The extracted header data
+    '''
+
+    if verbose:
+        print('Extracting the header in {}'.format(source))
+
+    # https://docs.python.org/2/library/struct.html
+    # We need to convert to C-types. This means the 16-bit integers are
+    # shorts (h/H), the 32-bit integers are ints (i/I), and the 64-bit
+    # integers are longs (l/L). Use the lowercase format for signed
+    # integers, and the uppercase format for unsigned integers. '<'
+    # indicates little Endian
+    fields = {'Magic number' : (4, '<I'),
+              'File version' : (2, '<H'),
+              'File type data' : (2, '<H'),
+              'Machine ID' : (4, '<I'),
+              'Session ID' : (4, '<I'),
+              'Start time' : (8, '<l'),
+              'End time' : (8, '<l'),
+              'Compressed' : (2, '<H'),
+              'Data size' : (4, '<I'),
+              'crc' : (2, '<H'),
+              'mcsize' : (4, '<I')}
+
+    header = []
+    for field in fields:
+        if verbose:
+            print('Unpacking {}'.format(field))
+
+        print(num_of_bytes)
+        read_bytes = data_file.read(num_of_bytes)
+        c_type = fields.get(field)[1]
+
+        header.append('{}: {}'.format(field, struct.unpack(c_type, read_bytes)))
+
+    '''
+    magic_number = data_file.read(4)
+    magic_number = struct.unpack('<I', magic_number)
+    file_version = data_file.read(2)
+    file_version = struct.unpack('<H', file_version)
+    file_type_data = struct.unpack('<H', data_file.read(2))
+
+    header = []
+    header.append('File name: {}'.format(source))
+    header.append('Magic number: {}'.format(magic_number))
+    header.append('File version: {}'.format(file_version))
+    header.append('File type data: {}'.format(file_type_data))
+    '''
+
+    print(header)
 
 
 def write_file(File, destination):
@@ -194,3 +313,5 @@ verbose = False
 if __name__ == '__main__':
     setup_args()
     copy_file(source, destination)
+    data_file = open_file(source)
+    extract_header(data_file)
