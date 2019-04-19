@@ -158,7 +158,7 @@ def extract_header(data_file):
     Parameters
     ----------
     data_file : File
-        The .001 file that contains the header to be read
+        The .001 file that contains the header to be extracted
 
     Attributes
     ----------
@@ -167,8 +167,21 @@ def extract_header(data_file):
         if True, print 'Now reading the header packet in {source}'
 
     header : String array
-        A String array to be populated with the following fields, all of which
-        are part of the header packet
+        A String array to be populated with the various fields found in the
+        header packet
+
+    fields : Dictionary
+        The key of each entry is the name of each of the various fields found
+        in the header packet. The value is a tuple, index 0 is the number of 
+        bytes used by the field, index 1 is the C-type of that field.
+
+        16-bit integers are shorts (h/H), 32-bit integers are ints (i/I), 
+        64-bit integers are long longs (q/Q). Use the lowercase letter for 
+        signed integers, and the uppercase format for unsigned integers. '<'
+        indicates little Endian, which all the CPAP data appears to be stored
+        in
+
+        https://docs.python.org/2/library/struct.html
 
         magic_number : unsigned 32-bit int
             TODO: What?
@@ -217,50 +230,75 @@ def extract_header(data_file):
     if verbose:
         print('Extracting the header in {}'.format(source))
 
-    # https://docs.python.org/2/library/struct.html
-    # We need to convert to C-types. This means the 16-bit integers are
-    # shorts (h/H), the 32-bit integers are ints (i/I), and the 64-bit
-    # integers are longs (l/L). Use the lowercase format for signed
-    # integers, and the uppercase format for unsigned integers. '<'
-    # indicates little Endian
     fields = {'Magic number' : (4, '<I'),
               'File version' : (2, '<H'),
               'File type data' : (2, '<H'),
               'Machine ID' : (4, '<I'),
               'Session ID' : (4, '<I'),
-              'Start time' : (8, '<l'),
-              'End time' : (8, '<l'),
+              'Start time' : (8, '<q'),
+              'End time' : (8, '<q'),
               'Compressed' : (2, '<H'),
               'Data size' : (4, '<I'),
               'crc' : (2, '<H'),
               'mcsize' : (4, '<I')}
 
-    header = []
+    header = ['---HEADER---\n']
     for field in fields:
         if verbose:
-            print('Unpacking {}'.format(field))
+            print('Unpacking {} in {}'.format(field, source))
 
-        print(num_of_bytes)
+        num_of_bytes = fields.get(field)[0]
         read_bytes = data_file.read(num_of_bytes)
         c_type = fields.get(field)[1]
 
-        header.append('{}: {}'.format(field, struct.unpack(c_type, read_bytes)))
+        header.append('{}: {}\n'.format(field, struct.unpack(c_type, read_bytes)))
 
+    return header
+
+def extract_data(data_file):
     '''
-    magic_number = data_file.read(4)
-    magic_number = struct.unpack('<I', magic_number)
-    file_version = data_file.read(2)
-    file_version = struct.unpack('<H', file_version)
-    file_type_data = struct.unpack('<H', data_file.read(2))
+    The SpO2 files, stored as .001 files, all have data packets which
+    immeditaly follow the header packet. This method extracts the data from 
+    a data packet, and returns those data
 
-    header = []
-    header.append('File name: {}'.format(source))
-    header.append('Magic number: {}'.format(magic_number))
-    header.append('File version: {}'.format(file_version))
-    header.append('File type data: {}'.format(file_type_data))
+    Parameters
+    ----------
+    data_file : File
+        The .001 file that contains the data packet to be extracted
+
+    Attributes
+    ----------
+
+    verbose : bool
+        if True, print 'Now reading a data packet in {source}'
+
+    data : String array
+        A String array to be populated with the various fields found in the
+        data packet
+
+    fields : Dictionary
+        The key of each entry is the name of each of the various fields found
+        in the data packet. The value is a tuple, index 0 is the number of 
+        bytes used by the field, index 1 is the C-type of that field.
+
+        16-bit integers are shorts (h/H), 32-bit integers are ints (i/I), 
+        64-bit integers are long longs (q/Q). Use the lowercase letter for 
+        signed integers, and the uppercase format for unsigned integers. '<'
+        indicates little Endian, which all the CPAP data appears to be stored
+        in
+
+        https://docs.python.org/2/library/struct.html
+
+        packet_type : unsigned 8-bit integer
+            Indicates what type of packet this is
+            TODO: What are the types of packets?
+
+
+    Returns
+    -------
+    data : String array
+        The extracted data
     '''
-
-    print(header)
 
 
 def write_file(File, destination):
@@ -312,6 +350,7 @@ verbose = False
 
 if __name__ == '__main__':
     setup_args()
-    copy_file(source, destination)
+
     data_file = open_file(source)
-    extract_header(data_file)
+    header = extract_header(data_file)
+    write_file(header, destination) 
