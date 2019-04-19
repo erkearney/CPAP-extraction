@@ -35,44 +35,57 @@ class TestCopyFile(unittest.TestCase):
             directory
     '''
     @patch('cpap_extraction.write_file')
-    @patch('cpap_extraction.read_file', return_value='xx')
+    @patch('cpap_extraction.open_file', return_value='xx')
     def testCopy(self, mocked_source, mocked_output):
         # TODO: This doesn't seem to actually work, I'll try and get some help
         cpap_extraction.copy_file(mocked_source, mocked_output)
         assert os.path.exists(mocked_source + '_extracted.JSON')
 
-class testReadFile(unittest.TestCase):
+class testOpenFile(unittest.TestCase):
     '''
-    Tests the read_file method, which reads in a binary file, and returns it
+    Tests the open_file method, which reads in a binary file, and returns it
     as a file object.
 
     Methods
     -------
         testReadFileExists
-            Tests whether read_file correctly opens a file that exists
+            Tests whether open_file correctly opens a file that exists
         testReadFileDoesNotExist
-            Tests whether read_file correctly raises the FileNotFoundError
+            Tests whether open_file correctly raises the FileNotFoundError
             exception if the specified file does not exist
     '''
 
     @patch('cpap_extraction.open')
     @patch('cpap_extraction.os.path.isfile', return_value=True)
-    def testReadFileExists(self, mocked_os, mocked_file):
-        cpap_extraction.read_file('Any file')
+    def testOpenFileExists(self, mocked_os, mocked_file):
+        cpap_extraction.open_file('Any file')
         mocked_file.assert_called_once_with('Any file', 'rb')
 
     @patch('cpap_extraction.open')
     @patch('cpap_extraction.os.path.isfile', return_value=False)
-    def testReadFileDoesNotExist(self, mocked_os, mocked_file):
+    def testOpenFileDoesNotExist(self, mocked_os, mocked_file):
         # Use a context manager to test raising exceptions:
         # https://docs.python.org/3.6/library/unittest.html
         with self.assertRaises(FileNotFoundError): 
-            cpap_extraction.read_file('Any file')
+            cpap_extraction.open_file('Any file')
+
+class testExtractHeader(unittest.TestCase):
+    '''
+    Tests the extract_header method, which takes a file object created by
+    the open_file method, and extracts the header information, stored in
+    the first packet of the file.
+
+    Methods
+    -------
+
+    '''
+
+    
 
 class testWriteFile(unittest.TestCase):
     '''
     Tests the write_file method, which takes a file object created by the
-    read_file method, and writes it out to a file called 
+    open_file method, and writes it out to a file called 
     orig_file_extracted.JSON, in the specified directory on the users' drive.
 
     Methods
