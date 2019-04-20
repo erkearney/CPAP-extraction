@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 '''
 This module will take raw CPAP data as an input, and export it to JSON as an
 output.
@@ -149,8 +150,7 @@ def open_file(source):
     File = open(source, 'rb')
     return File
 
-
-def extract_header(data_file):
+def extract_header_packet(packet):
     '''
     The SpO2 files, stored as .001 files, all have header packets. This method
     extracts the data from those headers, and returns those data
@@ -248,14 +248,16 @@ def extract_header(data_file):
             print('Unpacking {} in {}'.format(field, source))
 
         num_of_bytes = fields.get(field)[0]
-        read_bytes = data_file.read(num_of_bytes)
+        read_bytes = packet[:num_of_bytes]
+        del packet[:num_of_bytes]
         c_type = fields.get(field)[1]
 
         header.append('{}: {}\n'.format(field, struct.unpack(c_type, read_bytes)))
 
     return header
 
-def extract_data(data_file):
+
+def extract_data_packet(data_file):
     '''
     The SpO2 files, stored as .001 files, all have data packets which
     immeditaly follow the header packet. This method extracts the data from 
@@ -299,6 +301,62 @@ def extract_data(data_file):
     data : String array
         The extracted data
     '''
+    if verbose:
+        print('Unpacking data packet from {}'.format(source))
+
+
+def read_packet(data_file, delimeter):
+    '''
+    Packets are sepearted using a delimeter, the .001 files, for example, use
+    \xff\xff\xff\xff as their delimeter. This packet reads and returns all data
+    stored in data_file up to delimeter. The data are stored with varrying
+    length, some data fields are a single byte, some are 16 bytes. Because of
+    this, even if we know the delimeter is four bytes, we cannot read the data
+    file four bytes at a time. We must instead read one byte at a time. Once
+    each byte is read in, this method checks if that byte is the first part of
+    the delimeter. If it isn't, the byte is appended to packet. If it is, this
+    method seeks back one byte, then checks if the next bytes match the
+    delimeter, if they do, the packet is completely read, so this method
+    returns. TODO: Make this explanation less terrible.
+
+    Parameters
+    ----------
+    data_file : File
+        A file object created by read_file(), this object contains the data
+        packets to be read
+
+    delimeter : bytes
+        The 'separator' of the packets in data_file. For .001 files, the
+        delimeter is b'\xff\xff\xff\xff'
+
+    Attributes
+    ----------
+    packet : bytes
+        The complete packet of bytes to be returned
+
+    byte : bytes
+        A single byte of data. If this byte isn't part of the delimeter, it
+        gets appended to packet
+
+    verbose : bool
+        If True, print 'Reading a packet from (source)'
+    '''
+
+    if verbose:
+        print('Reading a packet from {}'.format(source))
+
+    packet = b''
+
+    while True:
+        byte = data_file.read(1)
+        if byte == delimeter[0].to_bytes(1, 'little'):
+            data_file.seek(-1, 1)
+            if data_file.read(len(delimeter)) == delimeter:
+                break
+        
+        packet += byte
+
+    return bytearray(packet)
 
 
 def write_file(File, destination):
@@ -322,7 +380,7 @@ def write_file(File, destination):
         The name of the output file
 
     verbose : bool
-        if True, print 'Now writing out source.JSON', where 'source' is the
+        If True, print 'Now writing out source.JSON', where 'source' is the
         name of the orginal file.
     '''
 
@@ -352,5 +410,10 @@ if __name__ == '__main__':
     setup_args()
 
     data_file = open_file(source)
+    packet = read_packet(data_file, b'\xff\xff\xff\xff')
+    header = extract_header_packet(packet)
+    '''
     header = extract_header(data_file)
     write_file(header, destination) 
+    extract_data_packet(data_file)
+    '''
