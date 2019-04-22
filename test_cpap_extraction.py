@@ -79,7 +79,6 @@ class testExtractHeader(unittest.TestCase):
     -------
 
     '''
-
     
 
 class testWriteFile(unittest.TestCase):
@@ -103,7 +102,7 @@ class testWriteFile(unittest.TestCase):
     @patch('cpap_extraction.os.path.isdir', return_value=True)
     def testWriteFileDirExists(self, mocked_os, mocked_file):
         cpap_extraction.write_file('Any file', 'Any directory')
-        mocked_file.assert_called_once_with('Any directory/_extracted.JSON', 'w')
+        mocked_file.assert_called_once_with('Any directory/_extracted.JSON', 'a')
 
     @patch('cpap_extraction.open')
     @patch('cpap_extraction.os.path.isdir', return_value=False)

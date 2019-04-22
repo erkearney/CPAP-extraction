@@ -7,7 +7,7 @@ Example
 -------
     $ python cpap_extraction.py 38611.000 .
 
-Extracts the raw CPAP data from 38611.000 to a new file called 
+Extracts the raw CPAP data from 38611.000 to a new file called
 38611_extracted.JSON
 
 Attributes
@@ -202,7 +202,7 @@ def read_packet(data_file, delimeter):
                 break
         elif byte == b'':
             break
-        
+
         packet += byte
 
     return bytearray(packet)
@@ -230,11 +230,11 @@ def extract_header_packet(packet):
 
     fields : Dictionary
         The key of each entry is the name of each of the various fields found
-        in the header packet. The value is a tuple, index 0 is the number of 
+        in the header packet. The value is a tuple, index 0 is the number of
         bytes used by the field, index 1 is the C-type of that field.
 
-        16-bit integers are shorts (h/H), 32-bit integers are ints (i/I), 
-        64-bit integers are long longs (q/Q). Use the lowercase letter for 
+        16-bit integers are shorts (h/H), 32-bit integers are ints (i/I),
+        64-bit integers are long longs (q/Q). Use the lowercase letter for
         signed integers, and the uppercase format for unsigned integers. '<'
         indicates little Endian, which all the CPAP data appears to be stored
         in
@@ -288,17 +288,17 @@ def extract_header_packet(packet):
     if verbose:
         print('Extracting the header in {}'.format(source))
 
-    fields = {'Magic number' : (4, '<I'),
-              'File version' : (2, '<H'),
-              'File type data' : (2, '<H'),
-              'Machine ID' : (4, '<I'),
-              'Session ID' : (4, '<I'),
-              'Start time (UNIX time)' : (8, '<q'),
-              'End time (UNIX time)' : (8, '<q'),
-              'Compressed' : (2, '<H'),
-              'Data size' : (4, '<I'),
-              'crc' : (2, '<H'),
-              'mcsize' : (4, '<I')}
+    fields = {'Magic number': (4, '<I'),
+              'File version': (2, '<H'),
+              'File type data': (2, '<H'),
+              'Machine ID': (4, '<I'),
+              'Session ID': (4, '<I'),
+              'Start time (UNIX time)': (8, '<q'),
+              'End time (UNIX time)': (8, '<q'),
+              'Compressed': (2, '<H'),
+              'Data size': (4, '<I'),
+              'crc': (2, '<H'),
+              'mcsize': (4, '<I')}
 
     header = ['---HEADER---\n']
     for field in fields:
@@ -310,7 +310,8 @@ def extract_header_packet(packet):
         del packet[:num_of_bytes]
         c_type = fields.get(field)[1]
 
-        header.append('{}: {}\n'.format(field, struct.unpack(c_type, read_bytes)))
+        header.append('{}: {}\n'.format(field,
+                                        struct.unpack(c_type, read_bytes)))
 
     time = int(re.search(r'\d+', header[6]).group(0))
     header.insert(7, 'Start time: {}\n'.format(convert_unix_time(time)))
@@ -323,7 +324,7 @@ def extract_header_packet(packet):
 def extract_data_packet(packet):
     '''
     The SpO2 files, stored as .001 files, all have data packets which
-    immeditaly follow the header packet. This method extracts the data from 
+    immeditaly follow the header packet. This method extracts the data from
     a data packet, and returns those data
 
     Parameters
@@ -343,11 +344,11 @@ def extract_data_packet(packet):
 
     fields : Dictionary
         The key of each entry is the name of each of the various fields found
-        in the data packet. The value is a tuple, index 0 is the number of 
+        in the data packet. The value is a tuple, index 0 is the number of
         bytes used by the field, index 1 is the C-type of that field.
 
-        16-bit integers are shorts (h/H), 32-bit integers are ints (i/I), 
-        64-bit integers are long longs (q/Q). Use the lowercase letter for 
+        16-bit integers are shorts (h/H), 32-bit integers are ints (i/I),
+        64-bit integers are long longs (q/Q). Use the lowercase letter for
         signed integers, and the uppercase format for unsigned integers. '<'
         indicates little Endian, which all the CPAP data appears to be stored
         in
@@ -367,19 +368,19 @@ def extract_data_packet(packet):
     if verbose:
         print('Unpacking data packet from {}'.format(source))
 
-    fields = {'Data type' : (2, '<H'),
-              'u1' : (2, '<H'),
-              'Number of packets' : (2, '<H'),
-              'Start time' : (8, '<q'),
-              'End time' : (8, '<q'),
-              'Number of pulse change events' : (4, '<I'),
-              'Field 2' : (1, '<B'),
-              'Double 1' : (8, 'd'),
-              'Double 2' : (8, 'd'),
-              'Double 3' : (8, 'd'),
-              'Minimum value' : (8, 'd'),
-              'Maximum value' : (8, 'd'),
-              'Final packet type' : (1, 'B')}
+    fields = {'Data type': (2, '<H'),
+              'u1': (2, '<H'),
+              'Number of packets': (2, '<H'),
+              'Start time': (8, '<q'),
+              'End time': (8, '<q'),
+              'Number of pulse change events': (4, '<I'),
+              'Field 2': (1, '<B'),
+              'Double 1': (8, 'd'),
+              'Double 2': (8, 'd'),
+              'Double 3': (8, 'd'),
+              'Minimum value': (8, 'd'),
+              'Maximum value': (8, 'd'),
+              'Final packet type': (1, 'B')}
 
     data = ['---DATA PACKET---\n']
     for field in fields:
@@ -392,8 +393,8 @@ def extract_data_packet(packet):
         del packet[:num_of_bytes]
         c_type = fields.get(field)[1]
 
-        data.append('{}: {}\n'.format(field, struct.unpack(c_type, read_bytes)))
-
+        data.append('{}: {}\n'.format(field,
+                                      struct.unpack(c_type, read_bytes)))
 
     print(data[4])
     return data
@@ -418,7 +419,7 @@ def convert_unix_time(unixtime):
 
     unixtime /= 1000
     return datetime.utcfromtimestamp(unixtime).strftime('%Y-%m-%d %H:%M:%S')
-    #header[6] = 'Start time: {}\n'.format(datetime.datetime.utcfromtimestamp(time).strftime('%Y-%m-%d %H:%M:%S'))
+
 
 def write_file(File, destination):
     '''
@@ -494,4 +495,3 @@ if __name__ == '__main__':
     write_file(header, destination)
     for packet in packets[1:]:
         pass
-
