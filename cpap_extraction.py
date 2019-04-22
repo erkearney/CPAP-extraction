@@ -24,8 +24,9 @@ import argparse             # For command line arguments
 import sys                  # Fir command line arguments
 import os                   # For file IO
 import struct               # For unpacking binary data
-import binascii             # For unpacking binary data
 import decorators           # For debugging, see the decorators.py file
+import re
+from datetime import datetime
 
 
 def setup_args():
@@ -150,6 +151,63 @@ def open_file(source):
     File = open(source, 'rb')
     return File
 
+
+def read_packet(data_file, delimeter):
+    '''
+    Packets are sepearted using a delimeter, the .001 files, for example, use
+    \xff\xff\xff\xff as their delimeter. This packet reads and returns all data
+    stored in data_file up to delimeter. The data are stored with varrying
+    length, some data fields are a single byte, some are 16 bytes. Because of
+    this, even if we know the delimeter is four bytes, we cannot read the data
+    file four bytes at a time. We must instead read one byte at a time. Once
+    each byte is read in, this method checks if that byte is the first part of
+    the delimeter. If it isn't, the byte is appended to packet. If it is, this
+    method seeks back one byte, then checks if the next bytes match the
+    delimeter, if they do, the packet is completely read, so this method
+    returns. TODO: Make this explanation less terrible.
+
+    Parameters
+    ----------
+    data_file : File
+        A file object created by read_file(), this object contains the data
+        packets to be read
+
+    delimeter : bytes
+        The 'separator' of the packets in data_file. For .001 files, the
+        delimeter is b'\xff\xff\xff\xff'
+
+    Attributes
+    ----------
+    packet : bytes
+        The complete packet of bytes to be returned
+
+    byte : bytes
+        A single byte of data. If this byte isn't part of the delimeter, it
+        gets appended to packet
+
+    verbose : bool
+        If True, print 'Reading a packet from (source)'
+    '''
+
+    if verbose:
+        print('Reading a packet from {}'.format(source))
+
+    packet = b''
+
+    while True:
+        byte = data_file.read(1)
+        if byte == delimeter[0].to_bytes(1, 'little'):
+            data_file.seek(-1, 1)
+            if data_file.read(len(delimeter)) == delimeter:
+                break
+        elif byte == b'':
+            break
+        
+        packet += byte
+
+    return bytearray(packet)
+
+
 def extract_header_packet(packet):
     '''
     The SpO2 files, stored as .001 files, all have header packets. This method
@@ -235,8 +293,8 @@ def extract_header_packet(packet):
               'File type data' : (2, '<H'),
               'Machine ID' : (4, '<I'),
               'Session ID' : (4, '<I'),
-              'Start time' : (8, '<q'),
-              'End time' : (8, '<q'),
+              'Start time (UNIX time)' : (8, '<q'),
+              'End time (UNIX time)' : (8, '<q'),
               'Compressed' : (2, '<H'),
               'Data size' : (4, '<I'),
               'crc' : (2, '<H'),
@@ -254,10 +312,15 @@ def extract_header_packet(packet):
 
         header.append('{}: {}\n'.format(field, struct.unpack(c_type, read_bytes)))
 
+    time = int(re.search(r'\d+', header[6]).group(0))
+    header.insert(7, 'Start time: {}\n'.format(convert_unix_time(time)))
+    time = int(re.search(r'\d+', header[8]).group(0))
+    header.insert(9, 'End time: {}\n'.format(convert_unix_time(time)))
+
     return header
 
 
-def extract_data_packet(data_file):
+def extract_data_packet(packet):
     '''
     The SpO2 files, stored as .001 files, all have data packets which
     immeditaly follow the header packet. This method extracts the data from 
@@ -265,8 +328,8 @@ def extract_data_packet(data_file):
 
     Parameters
     ----------
-    data_file : File
-        The .001 file that contains the data packet to be extracted
+    packet : bytes
+        The data packet, created by read_packet() to be extracted
 
     Attributes
     ----------
@@ -304,60 +367,58 @@ def extract_data_packet(data_file):
     if verbose:
         print('Unpacking data packet from {}'.format(source))
 
+    fields = {'Data type' : (2, '<H'),
+              'u1' : (2, '<H'),
+              'Number of packets' : (2, '<H'),
+              'Start time' : (8, '<q'),
+              'End time' : (8, '<q'),
+              'Number of pulse change events' : (4, '<I'),
+              'Field 2' : (1, '<B'),
+              'Double 1' : (8, 'd'),
+              'Double 2' : (8, 'd'),
+              'Double 3' : (8, 'd'),
+              'Minimum value' : (8, 'd'),
+              'Maximum value' : (8, 'd'),
+              'Final packet type' : (1, 'B')}
 
-def read_packet(data_file, delimeter):
+    data = ['---DATA PACKET---\n']
+    for field in fields:
+        if verbose:
+            print('Unpacking {} in {}'.format(field, source))
+            print(packet)
+
+        num_of_bytes = fields.get(field)[0]
+        read_bytes = packet[:num_of_bytes]
+        del packet[:num_of_bytes]
+        c_type = fields.get(field)[1]
+
+        data.append('{}: {}\n'.format(field, struct.unpack(c_type, read_bytes)))
+
+
+    print(data[4])
+    return data
+
+
+def convert_unix_time(unixtime):
     '''
-    Packets are sepearted using a delimeter, the .001 files, for example, use
-    \xff\xff\xff\xff as their delimeter. This packet reads and returns all data
-    stored in data_file up to delimeter. The data are stored with varrying
-    length, some data fields are a single byte, some are 16 bytes. Because of
-    this, even if we know the delimeter is four bytes, we cannot read the data
-    file four bytes at a time. We must instead read one byte at a time. Once
-    each byte is read in, this method checks if that byte is the first part of
-    the delimeter. If it isn't, the byte is appended to packet. If it is, this
-    method seeks back one byte, then checks if the next bytes match the
-    delimeter, if they do, the packet is completely read, so this method
-    returns. TODO: Make this explanation less terrible.
+    Converts an integer, unitime, to a human-readable year-month-day,
+    hour-minute-second format. Bizarely, the raw data stores time values as
+    UNIX time, * 1000, this method corrects for that.
 
-    Parameters
-    ----------
-    data_file : File
-        A file object created by read_file(), this object contains the data
-        packets to be read
+    Paramters
+    ---------
+    unixtime : int
+        The UNIX time number to be converted
 
-    delimeter : bytes
-        The 'separator' of the packets in data_file. For .001 files, the
-        delimeter is b'\xff\xff\xff\xff'
-
-    Attributes
-    ----------
-    packet : bytes
-        The complete packet of bytes to be returned
-
-    byte : bytes
-        A single byte of data. If this byte isn't part of the delimeter, it
-        gets appended to packet
-
-    verbose : bool
-        If True, print 'Reading a packet from (source)'
+    Returns
+    --------
+    human-readable-time : string
+        The UNIX time converted to year-month-day, hour-minute-second format
     '''
 
-    if verbose:
-        print('Reading a packet from {}'.format(source))
-
-    packet = b''
-
-    while True:
-        byte = data_file.read(1)
-        if byte == delimeter[0].to_bytes(1, 'little'):
-            data_file.seek(-1, 1)
-            if data_file.read(len(delimeter)) == delimeter:
-                break
-        
-        packet += byte
-
-    return bytearray(packet)
-
+    unixtime /= 1000
+    return datetime.utcfromtimestamp(unixtime).strftime('%Y-%m-%d %H:%M:%S')
+    #header[6] = 'Start time: {}\n'.format(datetime.datetime.utcfromtimestamp(time).strftime('%Y-%m-%d %H:%M:%S'))
 
 def write_file(File, destination):
     '''
@@ -396,7 +457,7 @@ def write_file(File, destination):
         raise FileNotFoundError(
             'ERROR: destination directory {} not found!'.format(destination))
 
-    with open(destination + '/' + output_name, 'w') as output:
+    with open(destination + '/' + output_name, 'a') as output:
         for line in File:
             output.write(str(line))
 
@@ -409,11 +470,28 @@ verbose = False
 if __name__ == '__main__':
     setup_args()
 
+    delimeter = b'\xff\xff\xff\xff'
     data_file = open_file(source)
-    packet = read_packet(data_file, b'\xff\xff\xff\xff')
-    header = extract_header_packet(packet)
+
     '''
-    header = extract_header(data_file)
-    write_file(header, destination) 
-    extract_data_packet(data_file)
+    header_packet = read_packet(data_file, delimeter)
+    header = extract_header_packet(header_packet)
+    data_packet = read_packet(data_file, delimeter)
+    data = extract_data_packet(data_packet)
+
+    write_file(header, destination)
+    write_file(data, destination)
     '''
+
+    packets = []
+    while True:
+        packet = read_packet(data_file, delimeter)
+        if packet == b'':
+            break
+        packets.append(packet)
+
+    header = extract_header_packet(packets[0])
+    write_file(header, destination)
+    for packet in packets[1:]:
+        pass
+
