@@ -1,5 +1,9 @@
 # Compiled files
 __pycache__/
+*.pyc
+
+# OS files
+*.swp
 
 # C extensions
 *.so
