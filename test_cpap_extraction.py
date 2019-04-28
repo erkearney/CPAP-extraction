@@ -7,40 +7,6 @@ import cpap_extraction  # The module to be tested
 This module contains unittests for the cpap_extraction module
 '''
 
-class TestHelloWorld(unittest.TestCase):
-    '''
-    Tests the hello_world method, that method, as well as this test, should
-    eventually be deleted.
-
-    Methods
-    -------
-    test_return
-        Tests that the return value of hello_world is 0, as it should be
-    '''
-    def test_return(self):
-        self.assertEqual(cpap_extraction.hello_world(), 0)
-
-class TestCopyFile(unittest.TestCase):
-    '''
-    Tests the copy_file method, which coverts a file written in binary to 
-    plain-text, to a file called orig_file_extracted.JSON. The second
-    argument of copy_file is the directory to write the plain-text file to.
-    The copy_file method, as well as this test, should eventually be deleted.
-
-    Methods
-    -------
-        testCopy
-            Tests whether a file is correctly read in, and whether a file
-            called orig_file_extracted.JSON is created in the correct
-            directory
-    '''
-    @patch('cpap_extraction.write_file')
-    @patch('cpap_extraction.open_file', return_value='xx')
-    def testCopy(self, mocked_source, mocked_output):
-        # TODO: This doesn't seem to actually work, I'll try and get some help
-        cpap_extraction.copy_file(mocked_source, mocked_output)
-        assert os.path.exists(mocked_source + '_extracted.JSON')
-
 class testOpenFile(unittest.TestCase):
     '''
     Tests the open_file method, which reads in a binary file, and returns it
@@ -69,17 +35,73 @@ class testOpenFile(unittest.TestCase):
         with self.assertRaises(FileNotFoundError): 
             cpap_extraction.open_file('Any file')
 
-class testExtractHeader(unittest.TestCase):
+
+class testConvertUnixTime(unittest.TestCase):
     '''
-    Tests the extract_header method, which takes a file object created by
-    the open_file method, and extracts the header information, stored in
-    the first packet of the file.
+    Tests the convert_unix_time method, which takes an int, unixtime, as an
+    argument, and returns the unix time converted into year-month-day,
+    hour:minute:second format. This converted format is returned as a string.
 
     Methods
     -------
-
+        testNormal
+            Tests a base case, 842323380000, which should evaluate to
+            1996-09-10 02:43:00
+        testZero
+            Tests that if unixtime = 0, a warning is raised, and the returned
+            string is 1970-01-01 00:00:00
+        testNegative
+            Tests that if unixtime < 0, a warning is raised, and the returned
+            string is 1970-01-01 00:00:00
+        testLargeValue
+            Tests that is unixtime > 2147483647000, a warning is raised
+        testNonInteger
+            The CPAP machines store time in UNIX time, but in milliseconds.
+            Therefore, convert_unix_time divides the passed in unixtime
+            argument by 1000. Therefore, we'll want to make sure
+            convert_unix_time correctly handles non-integer values, it should
+            simply discard any decimal values.
+        testBadArgument
+            Tests that convert_unix_time correctly catches a TypeError, and
+            returns 'ERROR: {unixtime} is invalid' instead.
     '''
+
+    def testNormal(self):
+        unixtime = 842323380000
+        converted_time = cpap_extraction.convert_unix_time(unixtime)
+        self.assertEqual(converted_time, '1996-09-10 02:43:00')
+
+    def testZero(self):
+        unixtime = 0
+        with self.assertWarns(Warning):
+            converted_time = cpap_extraction.convert_unix_time(unixtime)
+            self.assertEqual(converted_time, '1970-01-01 00:00:00')
+
+    def testNegative(self):
+        unixtime = -1
+        with self.assertWarns(Warning):
+            converted_time = cpap_extraction.convert_unix_time(unixtime)
+            self.assertEqual(converted_time, '1970-01-01 00:00:00')
+
+    def testLargeValue(self):
+        unixtime = 2147483647000
+        with self.assertWarns(Warning):
+            converted_time = cpap_extraction.convert_unix_time(unixtime)
+            self.assertEqual(converted_time, '2038-01-19 03:14:07')
     
+    def testNonInteger(self):
+        # convert_unix_time should just drop extra milliseconds
+        unixtime = 842323380451
+        converted_time = cpap_extraction.convert_unix_time(unixtime)
+        self.assertEqual(converted_time, '1996-09-10 02:43:00')
+    
+    def testBadArgument(self):
+        # convert_unix_time should catch the TypeError, when it does, it's
+        # supposed to return whathever the original unixtime was
+        unixtime = 'test'
+        converted_time = cpap_extraction.convert_unix_time(unixtime)
+        self.assertEqual(converted_time, 'ERROR: test is invalid')
+
 
 class testWriteFile(unittest.TestCase):
     '''
