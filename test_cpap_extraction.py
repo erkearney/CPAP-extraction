@@ -7,6 +7,7 @@ import cpap_extraction  # The module to be tested
 This module contains unittests for the cpap_extraction module
 '''
 
+
 class testOpenFile(unittest.TestCase):
     '''
     Tests the open_file method, which reads in a binary file, and returns it
@@ -32,7 +33,7 @@ class testOpenFile(unittest.TestCase):
     def testOpenFileDoesNotExist(self, mocked_os, mocked_file):
         # Use a context manager to test raising exceptions:
         # https://docs.python.org/3.6/library/unittest.html
-        with self.assertRaises(FileNotFoundError): 
+        with self.assertRaises(FileNotFoundError):
             cpap_extraction.open_file('Any file')
 
 
@@ -88,13 +89,13 @@ class testConvertUnixTime(unittest.TestCase):
         with self.assertWarns(Warning):
             converted_time = cpap_extraction.convert_unix_time(unixtime)
             self.assertEqual(converted_time, '2038-01-19 03:14:07')
-    
+
     def testNonInteger(self):
         # convert_unix_time should just drop extra milliseconds
         unixtime = 842323380451
         converted_time = cpap_extraction.convert_unix_time(unixtime)
         self.assertEqual(converted_time, '1996-09-10 02:43:00')
-    
+
     def testBadArgument(self):
         # convert_unix_time should catch the TypeError, when it does, it's
         # supposed to return whathever the original unixtime was
@@ -106,7 +107,7 @@ class testConvertUnixTime(unittest.TestCase):
 class testWriteFile(unittest.TestCase):
     '''
     Tests the write_file method, which takes a file object created by the
-    open_file method, and writes it out to a file called 
+    open_file method, and writes it out to a file called
     orig_file_extracted.JSON, in the specified directory on the users' drive.
 
     Methods
@@ -124,13 +125,15 @@ class testWriteFile(unittest.TestCase):
     @patch('cpap_extraction.os.path.isdir', return_value=True)
     def testWriteFileDirExists(self, mocked_os, mocked_file):
         cpap_extraction.write_file('Any file', 'Any directory')
-        mocked_file.assert_called_once_with('Any directory/_extracted.JSON', 'a')
+        mocked_file.assert_called_once_with('Any directory/_extracted.JSON',
+                                            'a')
 
     @patch('cpap_extraction.open')
     @patch('cpap_extraction.os.path.isdir', return_value=False)
     def testWriteFileDirDoesNotExist(self, mocked_os, mocked_file):
         with self.assertRaises(FileNotFoundError):
             cpap_extraction.write_file('Any file', 'Any directory')
+
 
 if __name__ == '__main__':
     unittest.main()

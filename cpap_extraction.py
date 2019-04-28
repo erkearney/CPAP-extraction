@@ -191,10 +191,10 @@ def extract_header_packet(packet):
                      'Field 2': (1, '<B'),
                      'Double 1': (8, 'd'),
                      'Double 2': (8, 'd')}
-                     #'Double 3': (8, 'd'),
-                     #'Min value': (8, 'd'),
-                     #'Max value': (8, 'd')}
-                     
+                     # 'Double 3': (8, 'd'),
+                     # 'Min value': (8, 'd'),
+                     # 'Max value': (8, 'd')}
+
     for field in packet_fields:
         if verbose:
             print('Unpacking {} in {}'.format(field, source))
@@ -444,7 +444,7 @@ def extract_packet(packet, fields):
     C_Types : dictionary {character: int}
         The keys of this dictionary indicate a C_Type, and the values indicate
         the corresponding size of that C_Type. For more info, see
-        https://docs.python.org/3/library/struct.html 
+        https://docs.python.org/3/library/struct.html
 
     data : String array
         A String array to be populated with the various fields found in the
@@ -462,7 +462,7 @@ def extract_packet(packet, fields):
         The appropriate number of Bytes, taken from packet, to be unpacked
 
     extracted_line : String
-        The fully extracted line, ready to be appeneded to data. 
+        The fully extracted line, ready to be appeneded to data.
         Example: Start Time: 1553245673000
 
     Notes
@@ -487,12 +487,12 @@ def extract_packet(packet, fields):
     for field in fields:
         if verbose:
             print('Extracting {} from {}'.format(field, source))
-            
+
         C_Type = fields.get(field)
         number_of_bytes = C_Types.get(C_Type)
         bytes_to_be_extracted = packet[:number_of_bytes]
         del packet[:number_of_bytes]
-        C_Type = '<' + C_Type 
+        C_Type = '<' + C_Type
         extracted_line = struct.unpack(C_Type, bytes_to_be_extracted)
         data.append('{}: {}\n'.format(field, extracted_line))
 
