@@ -72,274 +72,6 @@ def setup_args():
     verbose = args.v
 
 
-def extract_header_packet(packet):
-    '''
-    The SpO2 files, stored as .001 files, all have header packets. This method
-    extracts the data from those headers, and returns those data
-
-    Parameters
-    ----------
-    data_file : File
-        The .001 file that contains the header to be extracted
-
-    Attributes
-    ----------
-
-    verbose : bool
-        if True, print 'Now reading the header packet in {source}'
-
-    header : String array
-        A String array to be populated with the various fields found in the
-        header packet
-
-    fields : Dictionary
-        The key of each entry is the name of each of the various fields found
-        in the header packet. The value is a tuple, index 0 is the number of
-        bytes used by the field, index 1 is the C-type of that field.
-
-        16-bit integers are shorts (h/H), 32-bit integers are ints (i/I),
-        64-bit integers are long longs (q/Q). Use the lowercase letter for
-        signed integers, and the uppercase format for unsigned integers. '<'
-        indicates little Endian, which all the CPAP data appears to be stored
-        in
-
-        https://docs.python.org/2/library/struct.html
-
-        magic_number : unsigned 32-bit int
-            Determined by machine type, date, etc. not important
-
-        file_version : unsigned 16-bit int
-            I have no idea what this is, it doesn't seem to be important
-
-        file_type_data : unisgned 16-bit int
-            I have no idea what this is, it doesn't seem to be important
-
-        machine_ID : unsigned 32-bit int
-            This machine's ID number
-
-        session_ID : unsigned 32-bit int
-            This session's ID number
-
-        start_time : 64-bit int
-            The start time of this session, stored in UNIX date-time format
-
-        end_time : 64-bit int
-            The end time of this session, stored in UNIX date-time format
-
-        compressed : unsigned 16-bit int
-            I have no idea what this is, it doesn't seem to be important
-
-        machine_type : unsigned 16-bit in
-            2 indicates pulse oximeter
-
-        data_size : unsigned 32-bit integer
-            Indicates the size of the data packets, which follow the header
-
-        crc : unsigned 16-bit integer
-            I have no idea what this is, it doesn't seem to be important
-
-        mcsize : unsigned 16-bit integer
-            Indicates the number of data streams
-
-    Returns
-    -------
-    header : String array
-        The extracted header data
-    '''
-
-    if verbose:
-        print('Extracting the header in {}'.format(source))
-
-    fields = {'Magic number': (4, '<I'),
-              'File version': (2, '<H'),
-              'File type data': (2, '<H'),
-              'Machine ID': (4, '<I'),
-              'Session ID': (4, '<I'),
-              'Start time (UNIX time)': (8, '<q'),
-              'End time (UNIX time)': (8, '<q'),
-              'Compressed': (2, '<H'),
-              'Data size': (4, '<I'),
-              'crc': (2, '<H'),
-              'mcsize': (4, '<I')}
-
-    header = ['---HEADER---\n']
-    for field in fields:
-        if verbose:
-            print('Unpacking {} in {}'.format(field, source))
-
-        num_of_bytes = fields.get(field)[0]
-        read_bytes = packet[:num_of_bytes]
-        del packet[:num_of_bytes]
-        c_type = fields.get(field)[1]
-
-        header.append('{}: {}\n'.format(field,
-                                        struct.unpack(c_type, read_bytes)))
-
-    time = int(re.search(r'\d+', header[6]).group(0))
-    header.insert(7, 'Start time: {}\n'.format(convert_unix_time(time)))
-    time = int(re.search(r'\d+', header[8]).group(0))
-    header.insert(9, 'End time: {}\n'.format(convert_unix_time(time)))
-
-    packet_fields = {'Packet type': (1, '<B'),
-                     'u1': (8, 'd'),
-                     'u2': (8, 'd'),
-                     'Data type': (4, '<I'),
-                     'Number of packets': (2, '<H'),
-                     'Time 1': (8, 'q'),
-                     'Time 2': (8, 'q'),
-                     'Pulse change events': (4, '<I'),
-                     'Field 2': (1, '<B'),
-                     'Double 1': (8, 'd'),
-                     'Double 2': (8, 'd')}
-                     # 'Double 3': (8, 'd'),
-                     # 'Min value': (8, 'd'),
-                     # 'Max value': (8, 'd')}
-
-    for field in packet_fields:
-        if verbose:
-            print('Unpacking {} in {}'.format(field, source))
-            print(packet)
-
-        num_of_bytes = packet_fields.get(field)[0]
-        read_bytes = packet[:num_of_bytes]
-        del packet[:num_of_bytes]
-        c_type = packet_fields.get(field)[1]
-
-        header.append('{}: {}\n'.format(field,
-                                        struct.unpack(c_type, read_bytes)))
-
-    print(packet)
-    return header
-
-
-def extract_data_packet(packet):
-    '''
-    The SpO2 files, stored as .001 files, all have data packets which
-    immeditaly follow the header packet. This method extracts the data from
-    a data packet, and returns those data
-
-    Parameters
-    ----------
-    packet : bytes
-        The data packet, created by read_packet() to be extracted
-
-    Attributes
-    ----------
-
-    verbose : bool
-        if True, print 'Now reading a data packet in {source}'
-
-    data : String array
-        A String array to be populated with the various fields found in the
-        data packet
-
-    fields : Dictionary
-        The key of each entry is the name of each of the various fields found
-        in the data packet. The value is a tuple, index 0 is the number of
-        bytes used by the field, index 1 is the C-type of that field.
-
-        16-bit integers are shorts (h/H), 32-bit integers are ints (i/I),
-        64-bit integers are long longs (q/Q). Use the lowercase letter for
-        signed integers, and the uppercase format for unsigned integers. '<'
-        indicates little Endian, which all the CPAP data appears to be stored
-        in
-
-        https://docs.python.org/2/library/struct.html
-
-        packet_type : unsigned 8-bit integer
-            Indicates what type of packet this is
-            TODO: What are the types of packets?
-
-
-    Returns
-    -------
-    data : String array
-        The extracted data
-    '''
-    if verbose:
-        print('Unpacking data packet from {}'.format(source))
-
-    fields = {'Data type': (2, '<H'),
-              'u1': (2, '<H'),
-              'Number of packets': (2, '<H'),
-              'Start time': (8, '<q'),
-              'End time': (8, '<q'),
-              'Number of pulse change events': (4, '<I'),
-              'Field 2': (1, '<B'),
-              'Double 1': (8, 'd'),
-              'Double 2': (8, 'd'),
-              'Double 3': (8, 'd'),
-              'Minimum value': (8, 'd'),
-              'Maximum value': (8, 'd'),
-              'Final packet type': (1, 'B')}
-
-    data = ['---DATA PACKET---\n']
-    for field in fields:
-        if verbose:
-            print('Unpacking {} in {}'.format(field, source))
-            print(packet)
-
-        num_of_bytes = fields.get(field)[0]
-        read_bytes = packet[:num_of_bytes]
-        del packet[:num_of_bytes]
-        c_type = fields.get(field)[1]
-
-        data.append('{}: {}\n'.format(field,
-                                      struct.unpack(c_type, read_bytes)))
-
-    print(data[4])
-    return data
-
-
-def extract_Sp02_data(packet):
-    '''
-    fields : Dictionary
-        The key of each entry is the name of each of the various fields found
-        in the data packet. The value is a tuple, index 0 is the number of
-        bytes used by the field, index 1 is the C-type of that field.
-
-        16-bit integers are shorts (h/H), 32-bit integers are ints (i/I),
-        64-bit integers are long longs (q/Q). Use the lowercase letter for
-        signed integers, and the uppercase format for unsigned integers. '<'
-        indicates little Endian, which all the CPAP data appears to be stored
-        in
-
-        https://docs.python.org/2/library/struct.html
-    '''
-
-    fields = {'Magic number': (4, '<I'),
-              'File version': (2, '<H'),
-              'File type data': (2, '<H'),
-              'Machine ID': (4, '<I'),
-              'Session ID': (4, '<I'),
-              'First start time': (8, '<q'),
-              'First end time': (8, '<q'),
-              'Compression': (2, '<H'),
-              'Machine type': (2, '<H'),
-              'Data size': (4, '<I'),
-              'crc': (2, '<H'),
-              'Number of data streams': (2, '<H'),
-              'Event size': (2, '<H'),
-              'Key1': (2, '<H'),
-              'Exist Sp02 sessions': (2, '<H')}
-
-    data = []
-    for field in fields:
-        if verbose:
-            print('Unpacking {} in {}'.format(field, source))
-            print(packet)
-
-        num_of_bytes = fields.get(field)[0]
-        read_bytes = packet[:num_of_bytes]
-        del packet[:num_of_bytes]
-        c_type = fields.get(field)[1]
-
-        data.append('{}: {}\n'.format(field,
-                                      struct.unpack(c_type, read_bytes)))
-
-    return data
-
-
 def open_file(source):
     '''
     Reads a source from the users' drive and returns the source as File
@@ -506,6 +238,23 @@ def extract_packet(packet, fields):
     return data
 
 
+def extract_header(packet):
+    fields = {'Magic number': 'I',
+              'File version': 'H',
+              'File type data': 'H',
+              'Machine ID': 'I',
+              'Session ID': 'I',
+              'Start time': 'Q',
+              'End time': 'Q',
+              'Compression': 'H',
+              'Machine type': 'H',
+              'Data size': 'I',
+              'CRC': 'H',
+              'MCSize': 'H'}
+
+    return extract_packet(packet, fields)
+
+
 def convert_unix_time(unixtime):
     '''
     Converts an integer, unitime, to a human-readable year-month-day,
@@ -617,3 +366,6 @@ if __name__ == '__main__':
         if packet == b'':
             break
         packets.append(packet)
+
+    header = extract_header(packets[0])
+    write_file(header, destination)
