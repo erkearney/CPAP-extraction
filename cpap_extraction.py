@@ -406,12 +406,19 @@ def read_packet(data_file, delimeter):
         A single byte of data. If this byte isn't part of the delimeter, it
         gets appended to packet
     '''
+    if type(delimeter) is not bytes:
+        raise(TypeError('Delimeter {} is invalid, it must be of type bytes'))
 
     packet = b''
+    if delimeter == b'':
+        warnings.warn('WARNING: Delimeter is empty')
+        first_byte_of_delimeter = b''
+    else:
+        first_byte_of_delimeter = delimeter[0].to_bytes(1, 'little')
 
     while True:
         byte = data_file.read(1)
-        if byte == delimeter[0].to_bytes(1, 'little'):
+        if byte == first_byte_of_delimeter:
             data_file.seek(-1, 1)
             if data_file.read(len(delimeter)) == delimeter:
                 break
@@ -561,6 +568,10 @@ def write_file(File, destination):
     # append '_extracted.JSON'
     output_name = source.split('.')[0] + '_extracted.JSON'
 
+    # Check if File is empty
+    if File == '':
+        warnings.warn('WARNING: Output is empty')
+
     if verbose:
         print('Now writting {} to {}'.format(output_name, destination))
 
@@ -600,30 +611,9 @@ if __name__ == '__main__':
     data_file = open_file(source)
     packet_delimeter = b'\xff\xff\xff\xff'
 
-    '''
-    header_packet = read_packet(data_file, delimeter)
-    header = extract_header_packet(header_packet)
-    data_packet = read_packet(data_file, delimeter)
-    data = extract_data_packet(data_packet)
-
-    write_file(header, destination)
-    write_file(data, destination)
-    '''
-
     packets = []
     while True:
         packet = read_packet(data_file, packet_delimeter)
         if packet == b'':
             break
         packets.append(packet)
-
-    fields = {'Magic number': 'I',
-              'File version': 'H',
-              'File type data': 'H',
-              'Machine ID': 'I',
-              'Session ID': 'I',
-              'First start time': 'q',
-              'First end time': 'q'}
-
-    data = extract_packet(packets[0], fields)
-    write_file(data, destination)

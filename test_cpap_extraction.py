@@ -3,6 +3,7 @@ from mock import Mock   # For mocking input and output files
 from mock import patch  # For patching out file I/O
 import os               # For file I/O
 import cpap_extraction  # The module to be tested
+import io               # For reading strings as files
 '''
 This module contains unittests for the cpap_extraction module
 '''
@@ -35,6 +36,73 @@ class testOpenFile(unittest.TestCase):
         # https://docs.python.org/3.6/library/unittest.html
         with self.assertRaises(FileNotFoundError):
             cpap_extraction.open_file('Any file')
+
+
+class testReadPacket(unittest.TestCase):
+    '''
+    Tests the read_packet method, which takes two arguments, data_file and
+    delimeter. data_file is a file, created by the read_file method, that
+    contains multiple packets, each separated by delimeter. This method
+    returns the first complete packet it finds within data file, or it returns
+    nothing if no packet is found. read_packet leaves the seak point of
+    data_file at the beginning of the next packet.
+
+    These tests use Python's io class:
+    https://docs.python.org/3/library/io.html
+
+    Methods
+    -------
+        testNormal
+            Tests whether read_file performs as expected in a base case
+        testEmpty
+            Tests that read_file properly returns an empty BytesArray if
+            data_file is empty
+        testDataFileEndsNoDelimeter
+            Tests whether read_file properly returns a packet that did not end
+            with a delimeter. In this scenario, a warning should be raised
+        testEmptyDelimeter
+            Tests whether read_file properly returns the entire packet,
+            unmodified if delimeter = b''
+        testInvalidDelimeter
+            Tests whether read_file properly raises a ValueError if delimeter
+            is not of type bytes
+    '''
+
+    def testNormal(self):
+        data_file = io.BytesIO(b'\x34\x32\xff\xff\xff\xff\x42')
+        delimeter = b'\xff\xff\xff\xff'
+        packet = cpap_extraction.read_packet(data_file, delimeter)
+
+        self.assertEqual(packet, b'\x34\x32')
+
+    def testEmpty(self):
+        data_file = io.BytesIO(b'')
+        delimeter = b'\xff\xff\xff\xff'
+        packet = cpap_extraction.read_packet(data_file, delimeter)
+
+        self.assertEqual(packet, b'')
+
+    def testDataFileEndsNoDelimeter(self):
+        data_file = io.BytesIO(b'\x34\x32')
+        delimeter = b'\xff\xff\xff\xff'
+        packet = cpap_extraction.read_packet(data_file, delimeter)
+
+        self.assertEqual(packet, b'\x34\x32')
+
+    def testEmptyDelimeter(self):
+        data_file = io.BytesIO(b'\x34\x32\xff\xff\xff\xff\x42')
+        delimeter = b''
+
+        with self.assertWarns(Warning):
+            packet = cpap_extraction.read_packet(data_file, delimeter)
+            self.assertEqual(packet, b'\x34\x32\xff\xff\xff\xff\x42')
+
+    def testInvalidDelimeter(self):
+        data_file = io.BytesIO(b'\x34\x32\xff\xff\xff\xff\x42')
+        delimeter = 'test'
+
+        with self.assertRaises(TypeError):
+            packet = cpap_extraction.read_packet(data_file, delimeter)
 
 
 class testConvertUnixTime(unittest.TestCase):
@@ -116,9 +184,12 @@ class testWriteFile(unittest.TestCase):
             Tests whether write_file correctly creates a file called
             orig_file_extracted.JSON in the specified directory
         testWriteFileDirDoesNotExist
-            Test whether write_file correctly raises the FileNotFoundError
+            Tests whether write_file correctly raises the FileNotFoundError
             exception if the specified directory to write the file into does
             not exist
+        testWriteEmptyFile
+            Tests whether write_file correctly raises a warning if the input
+            File is empty
     '''
 
     @patch('cpap_extraction.open')
@@ -133,6 +204,12 @@ class testWriteFile(unittest.TestCase):
     def testWriteFileDirDoesNotExist(self, mocked_os, mocked_file):
         with self.assertRaises(FileNotFoundError):
             cpap_extraction.write_file('Any file', 'Any directory')
+
+    @patch('cpap_extraction.open')
+    @patch('cpap_extraction.os.path.isdir', return_value=True)
+    def testWriteEmptyFile(self, mocked_os, mocked_file):
+        with self.assertWarns(Warning):
+            cpap_extraction.write_file('', 'Any directory')
 
 
 if __name__ == '__main__':
