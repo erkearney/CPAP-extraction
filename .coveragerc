@@ -1,0 +1,7 @@
+[run]
+include =
+	cpap_extraction.py
+
+[report]
+exclude_lines =
+	print*

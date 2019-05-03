@@ -105,6 +105,46 @@ class testReadPacket(unittest.TestCase):
             packet = cpap_extraction.read_packet(data_file, delimeter)
 
 
+class testReadPackets(unittest.TestCase):
+    '''
+    Tests the read_packets method, which should simply call the read_packet
+    method for each packet in a data file.
+
+    Methods
+    -------
+        testNormal
+            Tests a data_file containing two packets, separated by a
+            delimeter of \xff\xff\xff\xff. Ensures that read_packets returns
+            an array of size 2, and that the first index of the array contains
+            the first packet, and the second index of the array contains the
+            second packet
+
+    Notes
+    ------
+    Other cases that may seem necessary to test, such as if the delimeter is
+    invalid, the data file does not contain the delimeter, the data file is
+    empty, etc. are tested in testReadPacket
+    '''
+
+    def testNomarl(self):
+        data_file = io.BytesIO(b'\x03\x0c\x01\x00\xff\xff\xff\xff\x45')
+        delimeter = b'\xff\xff\xff\xff'
+
+        packets = cpap_extraction.read_packets(data_file, delimeter)
+        self.assertEqual(len(packets), 2)
+        self.assertEqual(packets[0], b'\x03\x0c\x01\x00')
+        self.assertEqual(packets[1], b'\x45')
+
+
+class testExtractPacket(unittest.TestCase):
+    '''
+    Tests the extract_packet method, which takes two arguments, a packet of
+    bytes, and a dictionary {field name: c_type}, where field name is the name
+    of the packet's various fields, and c_type is the field's corresponding
+    c_type, which determines how many bytes that field should be.
+    '''
+
+
 class testConvertUnixTime(unittest.TestCase):
     '''
     Tests the convert_unix_time method, which takes an int, unixtime, as an

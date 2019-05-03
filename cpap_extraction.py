@@ -12,25 +12,23 @@ Extracts the raw CPAP data from 38611.000 to a new file called
 
 Attributes
 ----------
-source : path
-    The source data file(s) to be extracted
+SOURCE : path
+    The SOURCE data file(s) to be extracted
 
-destination : path
+DESTINATION : path
     The directory to place the extracted files
 
-C_Types : dictionary {char: int}
+C_TYPES : dictionary {char: int}
     A dictionary containing the relavent number of bytes for each C Type.
     See https://docs.python.org/3/library/struct.html
 
-verbose : bool
-    If True, be verbose
+VERBOSE : bool
+    If True, be VERBOSE
 '''
 import argparse                 # For command line arguments
 import sys                      # Fir command line arguments
 import os                       # For file IO
 import struct                   # For unpacking binary data
-import decorators               # For debugging, see the decorators.py file
-import re                       # For cleaning up strings
 from datetime import datetime   # For converting UNIX time
 import warnings                 # For raising warnings
 
@@ -41,14 +39,14 @@ def setup_args():
 
     Attributes
     ----------
-    source : path
-        The source data file(s) to be extracted
+    SOURCE : path
+        The SOURCE data file(s) to be extracted
 
-    destination : path
+    DESTINATION : path
         The directory to place the extracted files
 
-    verbose : Boolean
-        If True, tell the user how long the extraction took, how big the source
+    VERBOSE : Boolean
+        If True, tell the user how long the extraction took, how big the SOURCE
         file(s) were, and how big each extracted file(s) is.
 
     parser : ArgumentParser
@@ -56,29 +54,29 @@ def setup_args():
 
     args : Parsed Arguments
     '''
-    global source
-    global destination
-    global verbose
+    global SOURCE
+    global DESTINATION
+    global VERBOSE
 
     parser = argparse.ArgumentParser(description='CPAP_data_extraction')
-    parser.add_argument('source', nargs=1, help='path to CPAP data')
-    parser.add_argument('destination', nargs=1, help='path to place extacted \
+    parser.add_argument('SOURCE', nargs=1, help='path to CPAP data')
+    parser.add_argument('DESTINATION', nargs=1, help='path to place extacted \
     data')
-    parser.add_argument('-v', action='store_true', help='be verbose')
+    parser.add_argument('-v', action='store_true', help='be VERBOSE')
 
     args = parser.parse_args()
-    source = sys.argv[1]
-    destination = sys.argv[2]
-    verbose = args.v
+    SOURCE = sys.argv[1]
+    DESTINATION = sys.argv[2]
+    VERBOSE = args.v
 
 
 def open_file(source):
     '''
-    Reads a source from the users' drive and returns the source as File
+    Reads a SOURCE from the users' drive and returns the source as File
 
     Parameters
     ----------
-    source : Path
+    SOURCE : Path
         The file to be read
 
     Attributes
@@ -86,30 +84,30 @@ def open_file(source):
     file : File
         The read-in file, now stored in memory
 
-    verbose : bool
-        if True, print 'Reading in {source}'
+    VERBOSE : bool
+        if True, print 'Reading in {SOURCE}'
 
     Returns
     -------
     File : The read-in file
     '''
 
-    if verbose:
+    if VERBOSE:
         print('Reading in {}'.format(source))
 
     if not os.path.isfile(source):
         raise FileNotFoundError(
-                'ERROR: source file {} not found!'.format(source))
+            'ERROR: source file {} not found!'.format(SOURCE))
 
-    File = open(source, 'rb')
-    return File
+    opened_file = open(source, 'rb')
+    return opened_file
 
 
-def read_packet(data_file, delimeter):
+def read_packet(input_file, delimeter):
     '''
     Packets are sepearted using a delimeter, the .001 files, for example, use
     \xff\xff\xff\xff as their delimeter. This packet reads and returns all data
-    stored in data_file up to delimeter. The data are stored with varrying
+    stored in input_file up to delimeter. The data are stored with varrying
     length, some data fields are a single byte, some are 16 bytes. Because of
     this, even if we know the delimeter is four bytes, we cannot read the data
     file four bytes at a time. We must instead read one byte at a time. Once
@@ -121,12 +119,12 @@ def read_packet(data_file, delimeter):
 
     Parameters
     ----------
-    data_file : File
+    input_file : File
         A file object created by read_file(), this object contains the data
         packets to be read
 
     delimeter : bytes
-        The 'separator' of the packets in data_file. For .001 files, the
+        The 'separator' of the packets in input_file. For .001 files, the
         delimeter is b'\xff\xff\xff\xff'
 
     Attributes
@@ -138,8 +136,8 @@ def read_packet(data_file, delimeter):
         A single byte of data. If this byte isn't part of the delimeter, it
         gets appended to packet
     '''
-    if type(delimeter) is not bytes:
-        raise(TypeError('Delimeter {} is invalid, it must be of type bytes'))
+    if not isinstance(delimeter, bytes):
+        raise TypeError('Delimeter {} is invalid, it must be of type bytes')
 
     packet = b''
     if delimeter == b'':
@@ -149,10 +147,10 @@ def read_packet(data_file, delimeter):
         first_byte_of_delimeter = delimeter[0].to_bytes(1, 'little')
 
     while True:
-        byte = data_file.read(1)
+        byte = input_file.read(1)
         if byte == first_byte_of_delimeter:
-            data_file.seek(-1, 1)
-            if data_file.read(len(delimeter)) == delimeter:
+            input_file.seek(-1, 1)
+            if input_file.read(len(delimeter)) == delimeter:
                 break
         elif byte == b'':
             break
@@ -160,6 +158,39 @@ def read_packet(data_file, delimeter):
         packet += byte
 
     return bytearray(packet)
+
+
+def read_packets(input_file, delimeter):
+    '''
+    Using the read_packet method, returns all packet_array found in input_file
+    in an array of packet_array.
+
+    Paramters
+    ---------
+    input_file : File
+        A file object created by read_file(), this object contains the data
+        packet_array to be read
+
+    delimeter : bytes
+        The 'separator' of the packet_array in input_file. For .001 files, the
+        delimeter is b'\xff\xff\xff\xff'
+
+    Attributes
+    ----------
+    packet : bytes
+        The packet returned by read_packet
+
+    packet_array : Array <packets>
+        The packet array to be returned
+    '''
+    packet_array = []
+    while True:
+        packet = read_packet(input_file, delimeter)
+        if packet == b'':
+            break
+        packet_array.append(packet)
+
+    return packet_array
 
 
 def extract_packet(packet, fields):
@@ -177,12 +208,12 @@ def extract_packet(packet, fields):
     Attributes
     ----------
 
-    verbose : bool
-        if True, print 'Extracting {field} from {source}
+    VERBOSE : bool
+        if True, print 'Extracting {field} from {SOURCE}
 
-    C_Types : dictionary {character: int}
-        The keys of this dictionary indicate a C_Type, and the values indicate
-        the corresponding size of that C_Type. For more info, see
+    C_TYPES : dictionary {character: int}
+        The keys of this dictionary indicate a c_type, and the values indicate
+        the corresponding size of that c_type. For more info, see
         https://docs.python.org/3/library/struct.html
 
     data : String array
@@ -191,11 +222,11 @@ def extract_packet(packet, fields):
 
     field : {string: character}
         Contains the name of the field (e.g., Start time, machine ID, etc.),
-        and the C_Type of that field (e.g., H, I, L, etc.)
+        and the c_type of that field (e.g., H, I, L, etc.)
 
     number_of_bytes : int
         The number of bytes used by the current field, determined by that
-        fields' C_Type
+        fields' c_type
 
     bytes_to_be_extracted : Bytes array
         The appropriate number of Bytes, taken from packet, to be unpacked
@@ -210,8 +241,12 @@ def extract_packet(packet, fields):
     are removed from packet. This is simply to make parsing the data cleaner
 
     All the data are little endian, struct.unpack() expects a '<' before the
-    C_Type to specifiy if the Bytes are little endian, which is why a '<' is
-    prepended to the C_Type
+    c_type to specifiy if the Bytes are little endian, which is why a '<' is
+    prepended to the c_type
+
+    struct.unpack() returns a tuple, using (extracted_line,) = struct.unpack()
+    automatically returns the unpacked tuple.
+    https://stackoverflow.com/questions/13894350/what-does-the-comma-mean-in-pythons-unpack#13894363
 
 
     Returns
@@ -220,25 +255,44 @@ def extract_packet(packet, fields):
         The extracted data
     '''
 
-    global C_Types
+    global C_TYPES
     data = []
 
     for field in fields:
-        if verbose:
-            print('Extracting {} from {}'.format(field, source))
+        if VERBOSE:
+            print('Extracting {} from {}'.format(field, SOURCE))
 
-        C_Type = fields.get(field)
-        number_of_bytes = C_Types.get(C_Type)
+        c_type = fields.get(field)
+        number_of_bytes = C_TYPES.get(c_type)
         bytes_to_be_extracted = packet[:number_of_bytes]
         del packet[:number_of_bytes]
-        C_Type = '<' + C_Type
-        extracted_line = struct.unpack(C_Type, bytes_to_be_extracted)
+        c_type = '<' + c_type
+        # https://stackoverflow.com/questions/13894350/what-does-the-comma-mean-in-pythons-unpack#13894363
+        (extracted_line,) = struct.unpack(c_type, bytes_to_be_extracted)
         data.append('{}: {}\n'.format(field, extracted_line))
 
     return data
 
 
 def extract_header(packet):
+    '''
+    Uses extract_packet to extract the header information from a packet.
+
+    Attributes
+    ----------
+    fields : Dictionary {Field name: c_type}
+        A dictionary containing the various fields found in a header packet,
+        along with their corresponding c_type, which determines the number of
+        bytes that fiels uses. See the C_TYPES dictionary.
+
+    Returns
+    --------
+    A method call to extract_packet, which itself will return a string array
+
+    Notes
+    ------
+    Only use this method on packets that you're sure are header packets
+    '''
     fields = {'Magic number': 'I',
               'File version': 'H',
               'File type data': 'H',
@@ -287,13 +341,13 @@ def convert_unix_time(unixtime):
     return datetime.utcfromtimestamp(unixtime).strftime('%Y-%m-%d %H:%M:%S')
 
 
-def write_file(File, destination):
+def write_file(input_file, destination):
     '''
-    Writes File out to the users' drive, in directory destination
+    Writes input_file out to the users' drive, in directory destination
 
     Parameters
     ----------
-    File : file
+    input_file : file
         The file to be written out
 
     destination : Path
@@ -301,45 +355,45 @@ def write_file(File, destination):
 
     Attributes
     ----------
-    source : String
+    SOURCE : String
         The name of the original file
 
     output_name : String
         The name of the output file
 
-    verbose : bool
-        If True, print 'Now writing out source.JSON', where 'source' is the
+    VERBOSE : bool
+        If True, print 'Now writing out SOURCE.JSON', where 'source' is the
         name of the orginal file.
     '''
 
-    global source
-    # Get everything from the source's filename before the file extention, and
+    global SOURCE
+    # Get everything from the SOURCE's filename before the file extention, and
     # append '_extracted.JSON'
-    output_name = source.split('.')[0] + '_extracted.JSON'
+    output_name = SOURCE.split('.')[0] + '_extracted.JSON'
 
-    # Check if File is empty
-    if File == '':
+    # Check if input_file is empty
+    if input_file == '':
         warnings.warn('WARNING: Output is empty')
 
-    if verbose:
+    if VERBOSE:
         print('Now writting {} to {}'.format(output_name, destination))
 
     if not os.path.isdir(destination):
         raise FileNotFoundError(
-            'ERROR: destination directory {} not found!'.format(destination))
+            'ERROR: destination directory {} not found!'.format(DESTINATION))
 
     with open(destination + '/' + output_name, 'a') as output:
-        for line in File:
+        for line in input_file:
             output.write(str(line))
 
 
 # Global variables
-source = "."
-destination = "."
-verbose = False
+SOURCE = "."
+DESTINATION = "."
+VERBOSE = False
 
 # See https://docs.python.org/3/library/struct.html
-C_Types = {'c': 1,
+C_TYPES = {'c': 1,
            'b': 1,
            'B': 1,
            'h': 2,
@@ -357,15 +411,10 @@ C_Types = {'c': 1,
 if __name__ == '__main__':
     setup_args()
 
-    data_file = open_file(source)
-    packet_delimeter = b'\xff\xff\xff\xff'
+    data_file = open_file(SOURCE)
+    PACKET_DELIMETER = b'\xff\xff\xff\xff'
 
-    packets = []
-    while True:
-        packet = read_packet(data_file, packet_delimeter)
-        if packet == b'':
-            break
-        packets.append(packet)
+    packets = read_packets(data_file, PACKET_DELIMETER)
 
     header = extract_header(packets[0])
-    write_file(header, destination)
+    write_file(header, DESTINATION)
