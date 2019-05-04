@@ -157,6 +157,7 @@ def read_packet(input_file, delimeter):
 
         packet += byte
 
+    write_file(packet, DESTINATION)
     return bytearray(packet)
 
 

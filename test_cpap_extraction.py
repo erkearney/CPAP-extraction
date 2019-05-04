@@ -144,6 +144,23 @@ class testExtractPacket(unittest.TestCase):
     c_type, which determines how many bytes that field should be.
     '''
 
+    def testNormal(self):
+        fields = {'Test unsigned short': 'H',
+                  'Test unsigned int': 'I',
+                  'Test unsigned long': 'L',
+                  'Test unsigned long long': 'Q'}
+
+        input_file = bytearray(b'''\x2a\x00\xc3\x01\x00\x00\xc9\x07\xcc\x00\xaa\xaa\x42\x1a\xcd\x79\x40\x09''')
+
+        correct_output = ['Test unsigned short: 42\n',
+                          'Test unsigned int: 451\n',
+                          'Test unsigned long: 13371337\n',
+                          'Test unsigned long long: 666666666666666666\n']
+
+
+        extracted_packet = cpap_extraction.extract_packet(input_file, fields)
+
+        self.assertEqual(extracted_packet, correct_output)
 
 class testConvertUnixTime(unittest.TestCase):
     '''
