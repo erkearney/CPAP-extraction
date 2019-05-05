@@ -1,15 +1,15 @@
-import unittest         # For testing
-from mock import Mock   # For mocking input and output files
-from mock import patch  # For patching out file I/O
-import os               # For file I/O
-import cpap_extraction  # The module to be tested
-import io               # For reading strings as files
 '''
 This module contains unittests for the cpap_extraction module
 '''
+import unittest         # For testing
+import os               # For file I/O
+import io               # For reading strings as files
+from mock import Mock   # For mocking input and output files
+from mock import patch  # For patching out file I/O
+import cpap_extraction  # The module to be tested
 
 
-class testOpenFile(unittest.TestCase):
+class TestOpenFile(unittest.TestCase):
     '''
     Tests the open_file method, which reads in a binary file, and returns it
     as a file object.
@@ -25,20 +25,20 @@ class testOpenFile(unittest.TestCase):
 
     @patch('cpap_extraction.open')
     @patch('cpap_extraction.os.path.isfile', return_value=True)
-    def testOpenFileExists(self, mocked_os, mocked_file):
+    def test_open_file_exists(self, mocked_os, mocked_file):
         cpap_extraction.open_file('Any file')
         mocked_file.assert_called_once_with('Any file', 'rb')
 
     @patch('cpap_extraction.open')
     @patch('cpap_extraction.os.path.isfile', return_value=False)
-    def testOpenFileDoesNotExist(self, mocked_os, mocked_file):
+    def test_open_file_does_not_exist(self, mocked_os, mocked_file):
         # Use a context manager to test raising exceptions:
         # https://docs.python.org/3.6/library/unittest.html
         with self.assertRaises(FileNotFoundError):
             cpap_extraction.open_file('Any file')
 
 
-class testReadPacket(unittest.TestCase):
+class TestReadPacket(unittest.TestCase):
     '''
     Tests the read_packet method, which takes two arguments, data_file and
     delimeter. data_file is a file, created by the read_file method, that
@@ -68,28 +68,28 @@ class testReadPacket(unittest.TestCase):
             is not of type bytes
     '''
 
-    def testNormal(self):
+    def test_normal(self):
         data_file = io.BytesIO(b'\x34\x32\xff\xff\xff\xff\x42')
         delimeter = b'\xff\xff\xff\xff'
         packet = cpap_extraction.read_packet(data_file, delimeter)
 
         self.assertEqual(packet, b'\x34\x32')
 
-    def testEmpty(self):
+    def test_empty(self):
         data_file = io.BytesIO(b'')
         delimeter = b'\xff\xff\xff\xff'
         packet = cpap_extraction.read_packet(data_file, delimeter)
 
         self.assertEqual(packet, b'')
 
-    def testDataFileEndsNoDelimeter(self):
+    def test_data_file_ends_no_delimeter(self):
         data_file = io.BytesIO(b'\x34\x32')
         delimeter = b'\xff\xff\xff\xff'
         packet = cpap_extraction.read_packet(data_file, delimeter)
 
         self.assertEqual(packet, b'\x34\x32')
 
-    def testEmptyDelimeter(self):
+    def test_empty_delimeter(self):
         data_file = io.BytesIO(b'\x34\x32\xff\xff\xff\xff\x42')
         delimeter = b''
 
@@ -97,7 +97,7 @@ class testReadPacket(unittest.TestCase):
             packet = cpap_extraction.read_packet(data_file, delimeter)
             self.assertEqual(packet, b'\x34\x32\xff\xff\xff\xff\x42')
 
-    def testInvalidDelimeter(self):
+    def test_invalid_delimeter(self):
         data_file = io.BytesIO(b'\x34\x32\xff\xff\xff\xff\x42')
         delimeter = 'test'
 
@@ -105,7 +105,7 @@ class testReadPacket(unittest.TestCase):
             packet = cpap_extraction.read_packet(data_file, delimeter)
 
 
-class testReadPackets(unittest.TestCase):
+class TestReadPackets(unittest.TestCase):
     '''
     Tests the read_packets method, which should simply call the read_packet
     method for each packet in a data file.
@@ -126,7 +126,7 @@ class testReadPackets(unittest.TestCase):
     empty, etc. are tested in testReadPacket
     '''
 
-    def testNomarl(self):
+    def test_nomarl(self):
         data_file = io.BytesIO(b'\x03\x0c\x01\x00\xff\xff\xff\xff\x45')
         delimeter = b'\xff\xff\xff\xff'
 
@@ -136,7 +136,7 @@ class testReadPackets(unittest.TestCase):
         self.assertEqual(packets[1], b'\x45')
 
 
-class testExtractPacket(unittest.TestCase):
+class TestExtractPacket(unittest.TestCase):
     '''
     Tests the extract_packet method, which takes two arguments, a packet of
     bytes, and a dictionary {field name: c_type}, where field name is the name
@@ -144,7 +144,7 @@ class testExtractPacket(unittest.TestCase):
     c_type, which determines how many bytes that field should be.
     '''
 
-    def testNormal(self):
+    def test_normal(self):
         fields = {'Test unsigned short': 'H',
                   'Test unsigned int': 'I',
                   'Test unsigned long': 'L',
@@ -157,12 +157,12 @@ class testExtractPacket(unittest.TestCase):
                           'Test unsigned long: 13371337\n',
                           'Test unsigned long long: 666666666666666666\n']
 
-
         extracted_packet = cpap_extraction.extract_packet(input_file, fields)
 
         self.assertEqual(extracted_packet, correct_output)
 
-class testConvertUnixTime(unittest.TestCase):
+
+class TestConvertUnixTime(unittest.TestCase):
     '''
     Tests the convert_unix_time method, which takes an int, unixtime, as an
     argument, and returns the unix time converted into year-month-day,
@@ -192,36 +192,36 @@ class testConvertUnixTime(unittest.TestCase):
             returns 'ERROR: {unixtime} is invalid' instead.
     '''
 
-    def testNormal(self):
+    def test_normal(self):
         unixtime = 842323380000
         converted_time = cpap_extraction.convert_unix_time(unixtime)
         self.assertEqual(converted_time, '1996-09-10 02:43:00')
 
-    def testZero(self):
+    def test_zero(self):
         unixtime = 0
         with self.assertWarns(Warning):
             converted_time = cpap_extraction.convert_unix_time(unixtime)
             self.assertEqual(converted_time, '1970-01-01 00:00:00')
 
-    def testNegative(self):
+    def test_negative(self):
         unixtime = -1
         with self.assertWarns(Warning):
             converted_time = cpap_extraction.convert_unix_time(unixtime)
             self.assertEqual(converted_time, '1970-01-01 00:00:00')
 
-    def testLargeValue(self):
+    def test_large_value(self):
         unixtime = 2147483647000
         with self.assertWarns(Warning):
             converted_time = cpap_extraction.convert_unix_time(unixtime)
             self.assertEqual(converted_time, '2038-01-19 03:14:07')
 
-    def testNonInteger(self):
+    def test_non_integer(self):
         # convert_unix_time should just drop extra milliseconds
         unixtime = 842323380451
         converted_time = cpap_extraction.convert_unix_time(unixtime)
         self.assertEqual(converted_time, '1996-09-10 02:43:00')
 
-    def testBadArgument(self):
+    def test_bad_argument(self):
         # convert_unix_time should catch the TypeError, when it does, it's
         # supposed to return whathever the original unixtime was
         unixtime = 'test'
@@ -229,7 +229,7 @@ class testConvertUnixTime(unittest.TestCase):
         self.assertEqual(converted_time, 'ERROR: test is invalid')
 
 
-class testWriteFile(unittest.TestCase):
+class TestWriteFile(unittest.TestCase):
     '''
     Tests the write_file method, which takes a file object created by the
     open_file method, and writes it out to a file called
@@ -251,20 +251,20 @@ class testWriteFile(unittest.TestCase):
 
     @patch('cpap_extraction.open')
     @patch('cpap_extraction.os.path.isdir', return_value=True)
-    def testWriteFileDirExists(self, mocked_os, mocked_file):
+    def test_write_file_dir_exists(self, mocked_os, mocked_file):
         cpap_extraction.write_file('Any file', 'Any directory')
-        mocked_file.assert_called_once_with('Any directory/_extracted.JSON',
+        mocked_file.assert_called_once_with('Any directory/_extracted.txt',
                                             'a')
 
     @patch('cpap_extraction.open')
     @patch('cpap_extraction.os.path.isdir', return_value=False)
-    def testWriteFileDirDoesNotExist(self, mocked_os, mocked_file):
+    def test_write_file_dir_does_not_exist(self, mocked_os, mocked_file):
         with self.assertRaises(FileNotFoundError):
             cpap_extraction.write_file('Any file', 'Any directory')
 
     @patch('cpap_extraction.open')
     @patch('cpap_extraction.os.path.isdir', return_value=True)
-    def testWriteEmptyFile(self, mocked_os, mocked_file):
+    def test_write_empty_file(self, mocked_os, mocked_file):
         with self.assertWarns(Warning):
             cpap_extraction.write_file('', 'Any directory')
 

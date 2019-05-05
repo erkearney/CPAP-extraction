@@ -26,7 +26,6 @@ VERBOSE : bool
     If True, be VERBOSE
 '''
 import argparse                 # For command line arguments
-import sys                      # Fir command line arguments
 import os                       # For file IO
 import struct                   # For unpacking binary data
 from datetime import datetime   # For converting UNIX time
@@ -42,10 +41,10 @@ def setup_args():
     SOURCE : path
         The SOURCE data file(s) to be extracted
 
-    DESTINATION : path
+    DESTINATION : path (optional)
         The directory to place the extracted files
 
-    VERBOSE : Boolean
+    VERBOSE : Boolean (optional)
         If True, tell the user how long the extraction took, how big the SOURCE
         file(s) were, and how big each extracted file(s) is.
 
@@ -59,14 +58,14 @@ def setup_args():
     global VERBOSE
 
     parser = argparse.ArgumentParser(description='CPAP_data_extraction')
-    parser.add_argument('SOURCE', nargs=1, help='path to CPAP data')
-    parser.add_argument('DESTINATION', nargs=1, help='path to place extacted \
-    data')
+    parser.add_argument('source', nargs=1, help='path to CPAP data')
+    parser.add_argument('--destination', nargs=1, default='.',
+                        help='path to place extracted files')
     parser.add_argument('-v', action='store_true', help='be VERBOSE')
 
     args = parser.parse_args()
-    SOURCE = sys.argv[1]
-    DESTINATION = sys.argv[2]
+    (SOURCE,) = args.source
+    (DESTINATION,) = args.destination
     VERBOSE = args.v
 
 
@@ -157,7 +156,6 @@ def read_packet(input_file, delimeter):
 
         packet += byte
 
-    write_file(packet, DESTINATION)
     return bytearray(packet)
 
 
@@ -370,7 +368,7 @@ def write_file(input_file, destination):
     global SOURCE
     # Get everything from the SOURCE's filename before the file extention, and
     # append '_extracted.JSON'
-    output_name = SOURCE.split('.')[0] + '_extracted.JSON'
+    output_name = SOURCE.split('.')[0] + '_extracted.txt'
 
     # Check if input_file is empty
     if input_file == '':
@@ -412,10 +410,10 @@ C_TYPES = {'c': 1,
 if __name__ == '__main__':
     setup_args()
 
-    data_file = open_file(SOURCE)
+    DATA_FILE = open_file(SOURCE)
     PACKET_DELIMETER = b'\xff\xff\xff\xff'
 
-    packets = read_packets(data_file, PACKET_DELIMETER)
+    PACKETS = read_packets(DATA_FILE, PACKET_DELIMETER)
 
-    header = extract_header(packets[0])
-    write_file(header, DESTINATION)
+    HEADER = extract_header(PACKETS[0])
+    write_file(HEADER, DESTINATION)
