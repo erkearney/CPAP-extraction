@@ -195,38 +195,61 @@ class TestConvertUnixTime(unittest.TestCase):
     def test_normal(self):
         unixtime = 842323380000
         converted_time = cpap_extraction.convert_unix_time(unixtime)
-        self.assertEqual(converted_time, '1996-09-10 02:43:00')
+        self.assertEqual(converted_time, '1996-09-10_02:43:00')
 
     def test_zero(self):
         unixtime = 0
         with self.assertWarns(Warning):
             converted_time = cpap_extraction.convert_unix_time(unixtime)
-            self.assertEqual(converted_time, '1970-01-01 00:00:00')
+            self.assertEqual(converted_time, '1970-01-01_00:00:00')
 
     def test_negative(self):
         unixtime = -1
         with self.assertWarns(Warning):
             converted_time = cpap_extraction.convert_unix_time(unixtime)
-            self.assertEqual(converted_time, '1970-01-01 00:00:00')
+            self.assertEqual(converted_time, '1970-01-01_00:00:00')
 
     def test_large_value(self):
         unixtime = 2147483647000
         with self.assertWarns(Warning):
             converted_time = cpap_extraction.convert_unix_time(unixtime)
-            self.assertEqual(converted_time, '2038-01-19 03:14:07')
+            self.assertEqual(converted_time, '2038-01-19_03:14:07')
 
     def test_non_integer(self):
         # convert_unix_time should just drop extra milliseconds
         unixtime = 842323380451
         converted_time = cpap_extraction.convert_unix_time(unixtime)
-        self.assertEqual(converted_time, '1996-09-10 02:43:00')
+        self.assertEqual(converted_time, '1996-09-10_02:43:00')
 
     def test_bad_argument(self):
         # convert_unix_time should catch the TypeError, when it does, it's
         # supposed to return whathever the original unixtime was
         unixtime = 'test'
         converted_time = cpap_extraction.convert_unix_time(unixtime)
-        self.assertEqual(converted_time, 'ERROR: test is invalid')
+        self.assertEqual(converted_time, 'ERROR: test is invalid\n')
+
+
+class test_convert_time_string(unittest.TestCase):
+    '''
+    Tests the convert_time_string() method, which takes a string of the form
+    "Start time: 1553245673000\n" and returns the UNIX time converted to the
+    more human-readable format: "Start time: 2019-03-22_09:07:53"
+    '''
+
+    def test_normal(self):
+        input_string = 'Start time: 1553245673000\n'
+        converted_string = cpap_extraction.convert_time_string(input_string)
+        self.assertEqual(converted_string, 'Start time: 2019-03-22_09:07:53\n')
+
+class test_separate_int(unittest.TestCase):
+    '''
+    Tests the separate_int() method, which takes a string as an input and
+    returns a tuple of the form (string, int, string)
+    '''
+    def test_normal(self):
+        input_string = 'Test time: 0451 TEST\n'
+        separated_string = cpap_extraction.separate_int(input_string)
+        self.assertEqual(separated_string, ['Test time: ', 451, ' TEST\n'])
 
 
 class TestWriteFile(unittest.TestCase):
@@ -252,8 +275,10 @@ class TestWriteFile(unittest.TestCase):
     @patch('cpap_extraction.open')
     @patch('cpap_extraction.os.path.isdir', return_value=True)
     def test_write_file_dir_exists(self, mocked_os, mocked_file):
+        # INVALID START TIME is the default value of start time, and thus, the
+        # default name of extracted files
         cpap_extraction.write_file('Any file', 'Any directory')
-        mocked_file.assert_called_once_with('Any directory/_extracted.txt',
+        mocked_file.assert_called_once_with('Any directory/INVALID START TIME.txt',
                                             'a')
 
     @patch('cpap_extraction.open')

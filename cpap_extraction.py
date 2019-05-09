@@ -30,6 +30,7 @@ import os                       # For file IO
 import struct                   # For unpacking binary data
 from datetime import datetime   # For converting UNIX time
 import warnings                 # For raising warnings
+import re                       # For ripping unixtimes out of strings
 
 
 def setup_args():
@@ -292,6 +293,8 @@ def extract_header(packet):
     ------
     Only use this method on packets that you're sure are header packets
     '''
+    global start_time
+
     fields = {'Magic number': 'I',
               'File version': 'H',
               'File type data': 'H',
@@ -305,7 +308,26 @@ def extract_header(packet):
               'CRC': 'H',
               'MCSize': 'H'}
 
-    return extract_packet(packet, fields)
+    header = extract_packet(packet, fields)
+
+
+    header[5] = convert_time_string(header[5])
+    header[6] = convert_time_string(header[6])
+
+    start_time = re.search('[^s \n]*$', header[5]).group()
+
+    return header
+
+
+def separate_int(input_string):
+    '''
+    Converts input_string into an array, of the form [string, int, string]
+    '''
+    strings = re.findall(r'\D+', input_string)
+    integer = re.search(r'\d+', input_string)
+
+    separated_string = [strings[0], int(integer.group()), strings[1]]
+    return separated_string
 
 
 def convert_unix_time(unixtime):
@@ -328,7 +350,7 @@ def convert_unix_time(unixtime):
     try:
         unixtime = int(unixtime / 1000)
     except TypeError:
-        return 'ERROR: {} is invalid'.format(unixtime)
+        return 'ERROR: {} is invalid\n'.format(unixtime)
 
     if unixtime <= 0:
         warnings.warn('WARNING: UNIX time in {} evaluated to 0')
@@ -337,10 +359,22 @@ def convert_unix_time(unixtime):
         warnings.warn('WARNING: UNIX time in {} evaluated to beyond the year \
                        2038, if you really are from the future, hello!')
 
-    return datetime.utcfromtimestamp(unixtime).strftime('%Y-%m-%d %H:%M:%S')
+    return datetime.utcfromtimestamp(unixtime).strftime('%Y-%m-%d_%H:%M:%S')
 
 
-def write_file(input_file, destination):
+def convert_time_string(input_string):
+    '''
+    Takes a string of the form "Start time: 1553245673000\n" and returns the 
+    UNIX time converted to the more human-readable format: 
+    "Start time: 2019-03-22_09:07:53"
+    '''
+    time = separate_int(input_string)
+    time[1] = convert_unix_time(time[1])
+    converted_string = ''.join(time)
+    return converted_string
+
+
+def write_file(input_file, destination, packet_type=None):
     '''
     Writes input_file out to the users' drive, in directory destination
 
@@ -351,6 +385,9 @@ def write_file(input_file, destination):
 
     destination : Path
         The directory to place the written out file
+
+    packet_type : String
+        The type of packet being written out (e.g., header, event summary)
 
     Attributes
     ----------
@@ -365,23 +402,26 @@ def write_file(input_file, destination):
         name of the orginal file.
     '''
 
-    global SOURCE
-    # Get everything from the SOURCE's filename before the file extention, and
-    # append '_extracted.JSON'
-    output_name = SOURCE.split('.')[0] + '_extracted.txt'
+    global start_time
+    output_name = start_time + '.txt'
 
     # Check if input_file is empty
     if input_file == '':
         warnings.warn('WARNING: Output is empty')
 
     if VERBOSE:
-        print('Now writting {} to {}'.format(output_name, destination))
+        print('Now writting {} to file {} at {}'.format(packet_type,
+                                                        output_name,
+                                                        destination))
 
     if not os.path.isdir(destination):
         raise FileNotFoundError(
             'ERROR: destination directory {} not found!'.format(DESTINATION))
 
     with open(destination + '/' + output_name, 'a') as output:
+        if packet_type is not None:
+            output.write('---{}---\n'.format(packet_type.upper()))
+
         for line in input_file:
             output.write(str(line))
 
@@ -390,6 +430,7 @@ def write_file(input_file, destination):
 SOURCE = "."
 DESTINATION = "."
 VERBOSE = False
+start_time = 'INVALID START TIME'
 
 # See https://docs.python.org/3/library/struct.html
 C_TYPES = {'c': 1,
@@ -416,4 +457,4 @@ if __name__ == '__main__':
     PACKETS = read_packets(DATA_FILE, PACKET_DELIMETER)
 
     HEADER = extract_header(PACKETS[0])
-    write_file(HEADER, DESTINATION)
+    write_file(HEADER, DESTINATION, 'header')
