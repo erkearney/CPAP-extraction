@@ -195,31 +195,31 @@ class TestConvertUnixTime(unittest.TestCase):
     def test_normal(self):
         unixtime = 842323380000
         converted_time = cpap_extraction.convert_unix_time(unixtime)
-        self.assertEqual(converted_time, '1996-09-10_02:43:00')
+        self.assertEqual(converted_time, '1996-09-10_02-43-00')
 
     def test_zero(self):
         unixtime = 0
         with self.assertWarns(Warning):
             converted_time = cpap_extraction.convert_unix_time(unixtime)
-            self.assertEqual(converted_time, '1970-01-01_00:00:00')
+            self.assertEqual(converted_time, '1970-01-01_00-00-00')
 
     def test_negative(self):
         unixtime = -1
         with self.assertWarns(Warning):
             converted_time = cpap_extraction.convert_unix_time(unixtime)
-            self.assertEqual(converted_time, '1970-01-01_00:00:00')
+            self.assertEqual(converted_time, '1970-01-01_00-00-00')
 
     def test_large_value(self):
         unixtime = 2147483647000
         with self.assertWarns(Warning):
             converted_time = cpap_extraction.convert_unix_time(unixtime)
-            self.assertEqual(converted_time, '2038-01-19_03:14:07')
+            self.assertEqual(converted_time, '2038-01-19_03-14-07')
 
     def test_non_integer(self):
         # convert_unix_time should just drop extra milliseconds
         unixtime = 842323380451
         converted_time = cpap_extraction.convert_unix_time(unixtime)
-        self.assertEqual(converted_time, '1996-09-10_02:43:00')
+        self.assertEqual(converted_time, '1996-09-10_02-43-00')
 
     def test_bad_argument(self):
         # convert_unix_time should catch the TypeError, when it does, it's
@@ -239,7 +239,7 @@ class test_convert_time_string(unittest.TestCase):
     def test_normal(self):
         input_string = 'Start time: 1553245673000\n'
         converted_string = cpap_extraction.convert_time_string(input_string)
-        self.assertEqual(converted_string, 'Start time: 2019-03-22_09:07:53\n')
+        self.assertEqual(converted_string, 'Start time: 2019-03-22_09-07-53\n')
 
 class test_separate_int(unittest.TestCase):
     '''
