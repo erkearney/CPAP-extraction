@@ -359,7 +359,7 @@ def convert_unix_time(unixtime):
         warnings.warn('WARNING: UNIX time in {} evaluated to beyond the year \
                        2038, if you really are from the future, hello!')
 
-    return datetime.utcfromtimestamp(unixtime).strftime('%Y-%m-%d_%H:%M:%S')
+    return datetime.utcfromtimestamp(unixtime).strftime('%Y-%m-%d_%H-%M-%S')
 
 
 def convert_time_string(input_string):

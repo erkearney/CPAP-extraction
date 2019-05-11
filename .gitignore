@@ -39,6 +39,7 @@ venv.sh
 *._extracted.*
 *_extracted.*
 *.JSON
+*.txt
 
 # Ignore burndown file
 *.ods
