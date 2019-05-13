@@ -57,17 +57,20 @@ def setup_args():
     global SOURCE
     global DESTINATION
     global VERBOSE
+    global DEBUG
 
     parser = argparse.ArgumentParser(description='CPAP_data_extraction')
     parser.add_argument('source', nargs=1, help='path to CPAP data')
     parser.add_argument('--destination', nargs=1, default='.',
                         help='path to place extracted files')
     parser.add_argument('-v', action='store_true', help='be VERBOSE')
+    parser.add_argument('-d', action='store_true', help='debug mode')
 
     args = parser.parse_args()
     (SOURCE,) = args.source
     (DESTINATION,) = args.destination
     VERBOSE = args.v
+    DEBUG = args.d
 
 
 def open_file(source):
@@ -266,6 +269,11 @@ def extract_packet(packet, fields):
         number_of_bytes = C_TYPES.get(c_type)
         bytes_to_be_extracted = packet[:number_of_bytes]
         del packet[:number_of_bytes]
+        
+        if DEBUG:
+            print('Bytes in {}: {}'.format(field, bytes_to_be_extracted))
+            print('Remaining bytes in packet: {}'.format(packet))
+
         c_type = '<' + c_type
         # https://stackoverflow.com/questions/13894350/what-does-the-comma-mean-in-pythons-unpack#13894363
         (extracted_line,) = struct.unpack(c_type, bytes_to_be_extracted)
