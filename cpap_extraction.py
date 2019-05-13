@@ -438,6 +438,7 @@ def write_file(input_file, destination, packet_type=None):
 SOURCE = "."
 DESTINATION = "."
 VERBOSE = False
+DEBUG = False
 start_time = 'INVALID START TIME'
 
 # See https://docs.python.org/3/library/struct.html
